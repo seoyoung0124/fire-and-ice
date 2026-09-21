@@ -2,8 +2,8 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 st.set_page_config(
-    page_title="A Dance of Fire and Ice - Ultra Engine",
-    page_icon="⚡",
+    page_title="A Dance of Fire and Ice - Professional Engine",
+    page_icon="🔥",
     layout="centered"
 )
 
@@ -11,12 +11,12 @@ st.set_page_config(
 st.markdown("""
 <style>
     .stApp {
-        background-color: #06090e;
+        background-color: #080b10;
         color: #ffffff;
     }
     h1 {
         text-align: center;
-        background: linear-gradient(135deg, #ff0055 0%, #00e5ff 100%);
+        background: linear-gradient(135deg, #ff3366 0%, #33ccff 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         font-weight: 900;
@@ -24,16 +24,16 @@ st.markdown("""
     }
     .stCaption {
         text-align: center;
-        color: #94a3b8;
+        color: #8f9cae;
         font-size: 0.95rem;
     }
 </style>
 """, unsafe_allow_html=True)
 
-st.title("⚡ A Dance of Fire and Ice ❄️")
-st.caption("초고속 난이도 지원 & 타일 위치/각도 완전 정렬 엔진")
+st.title("🔥 A Dance of Fire and Ice ❄️")
+st.caption("고정밀 수학적 회전 엔진 & Web Audio API 내장 웹 에디션")
 
-# 난이도 설정 (초고속 옵션 추가)
+# 난이도 설정 (더 빠른 속도 옵션 추가)
 col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
     speed_option = st.selectbox(
@@ -42,9 +42,9 @@ with col2:
             "Easy (BPM 110)", 
             "Normal (BPM 150)", 
             "Hard (BPM 200)", 
-            "Insane (BPM 260)", 
-            "Sonic (BPM 320)", 
-            "Overclock (BPM 400)"
+            "Insane (BPM 260)",
+            "🔥 Extreme (BPM 320)",
+            "⚡ Speed Demon (BPM 400)"
         ],
         index=1
     )
@@ -54,8 +54,8 @@ speed_map = {
     "Normal (BPM 150)": 0.055,
     "Hard (BPM 200)": 0.075,
     "Insane (BPM 260)": 0.098,
-    "Sonic (BPM 320)": 0.125,
-    "Overclock (BPM 400)": 0.155
+    "🔥 Extreme (BPM 320)": 0.125,
+    "⚡ Speed Demon (BPM 400)": 0.155
 }
 selected_speed = speed_map[speed_option]
 
@@ -69,7 +69,7 @@ game_html = f"""
         body {{
             margin: 0;
             padding: 0;
-            background-color: #06090e;
+            background-color: #080b10;
             color: #ffffff;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             display: flex;
@@ -84,10 +84,10 @@ game_html = f"""
             margin-top: 10px;
         }}
         #gameCanvas {{
-            border: 2px solid #1e293b;
+            border: 2px solid #1a2332;
             border-radius: 20px;
-            background: radial-gradient(circle at center, #0f172a 0%, #06090e 100%);
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9), 0 0 30px rgba(0, 229, 255, 0.15);
+            background: radial-gradient(circle at center, #0f172a 0%, #080b10 100%);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 20px rgba(51, 204, 255, 0.1);
             cursor: pointer;
         }}
         #info {{
@@ -108,7 +108,7 @@ game_html = f"""
             font-weight: 800;
             margin-top: 6px;
             height: 36px;
-            text-shadow: 0 0 12px rgba(255,255,255,0.25);
+            text-shadow: 0 0 10px rgba(255,255,255,0.2);
         }}
         #restartBtn {{
             display: none;
@@ -117,16 +117,16 @@ game_html = f"""
             font-size: 16px;
             font-weight: bold;
             color: #ffffff;
-            background: linear-gradient(135deg, #ff0055, #ff527b);
+            background: linear-gradient(135deg, #ff3366, #ff527b);
             border: none;
             border-radius: 12px;
             cursor: pointer;
-            box-shadow: 0 6px 20px rgba(255, 0, 85, 0.4);
+            box-shadow: 0 6px 20px rgba(255, 51, 102, 0.4);
             transition: all 0.2s ease;
         }}
         #restartBtn:hover {{
             transform: translateY(-2px) scale(1.03);
-            box-shadow: 0 8px 25px rgba(255, 0, 85, 0.6);
+            box-shadow: 0 8px 25px rgba(255, 51, 102, 0.6);
         }}
     </style>
 </head>
@@ -138,11 +138,12 @@ game_html = f"""
 
 <div id="info">
     <div class="stats">점수: <span id="score">0</span> &nbsp;|&nbsp; 콤보: <span id="combo">0</span> &nbsp;|&nbsp; 최고 콤보: <span id="maxCombo">0</span></div>
-    <div id="feedback" class="status" style="color: #00e5ff;">클릭하거나 아무 키나 눌러 시작하세요!</div>
+    <div id="feedback" class="status" style="color: #38bdf8;">화면을 클릭하거나 스페이스바를 누르세요!</div>
     <button id="restartBtn" onclick="initGame()">🔄 다시 도전하기</button>
 </div>
 
 <script>
+// Canvas & Context
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const scoreEl = document.getElementById('score');
@@ -151,7 +152,7 @@ const maxComboEl = document.getElementById('maxCombo');
 const feedbackEl = document.getElementById('feedback');
 const restartBtn = document.getElementById('restartBtn');
 
-// Web Audio API 오디오 엔진
+// Web Audio API 설정
 const AudioContext = window.AudioContext || window.webkitAudioContext;
 let audioCtx = null;
 
@@ -173,73 +174,77 @@ function playSound(type) {{
 
     if (type === 'PERFECT') {{
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(587.33, now); // D5
-        osc.frequency.exponentialRampToValueAtTime(1174.66, now + 0.1); // D6
+        osc.frequency.setValueAtTime(523.25, now);
+        osc.frequency.exponentialRampToValueAtTime(1046.50, now + 0.12);
         gain.gain.setValueAtTime(0.3, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+        osc.start(now);
+        osc.stop(now + 0.12);
+    }} else if (type === 'GREAT') {{
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(440, now);
+        gain.gain.setValueAtTime(0.25, now);
         gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
         osc.start(now);
         osc.stop(now + 0.1);
-    }} else if (type === 'GREAT') {{
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(493.88, now); // B4
-        gain.gain.setValueAtTime(0.25, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
-        osc.start(now);
-        osc.stop(now + 0.08);
     }} else if (type === 'MISS') {{
         osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(160, now);
-        osc.frequency.linearRampToValueAtTime(50, now + 0.22);
+        osc.frequency.setValueAtTime(150, now);
+        osc.frequency.linearRampToValueAtTime(60, now + 0.25);
         gain.gain.setValueAtTime(0.4, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
         osc.start(now);
-        osc.stop(now + 0.22);
+        osc.stop(now + 0.25);
     }} else if (type === 'BEAT') {{
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(261.63, now);
+        osc.frequency.setValueAtTime(220, now);
         gain.gain.setValueAtTime(0.05, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
         osc.start(now);
-        osc.stop(now + 0.04);
+        osc.stop(now + 0.05);
     }}
 }}
 
-// 게임 엔진 상수
+// 게임 상수
 const R = 46; 
 const TILE_W = 62;
 const TILE_H = 36;
 
+// 객체 데이터 구조
 let tiles = [];
 let currentTileIdx = 0;
 let pivotPos = {{ x: 0, y: 0 }};
 let activePos = {{ x: 0, y: 0 }};
 
-// 각도 정밀 제어
+// 각도 및 회전 제어
 let currentAngle = 0;
 let targetAngle = 0;
-let rotDirection = 1; 
+let rotDirection = 1; // 1: 시계 방향, -1: 반시계 방향
 let baseRotSpeed = {selected_speed};
 
 let activePlanetType = 1; // 0: 불(Red), 1: 얼음(Blue)
 
-// 카메라 및 이펙트 제어
+// 고정밀 카메라 & 쉐이크 시스템
 let camX = 0;
 let camY = 0;
-const camLerpFactor = 0.1; 
+const camLerpFactor = 0.09; 
 let shakeAmount = 0;
+let shakeDuration = 0; // 쉐이크 지속 프레임 타이머 (60FPS 기준 120 = 2초)
 
+// 점수 및 판정
 let score = 0;
 let combo = 0;
 let maxCombo = 0;
 let gameState = "READY";
 
+// 그래픽 이펙트 파티클 시스템
 let particles = [];
 let planetTrails = [];
 
 function addExplosion(x, y, color) {{
-    for (let i = 0; i < 28; i++) {{
+    for (let i = 0; i < 24; i++) {{
         const angle = Math.random() * Math.PI * 2;
-        const speed = Math.random() * 7 + 2;
+        const speed = Math.random() * 6 + 2;
         particles.push({{
             x: x,
             y: y,
@@ -248,7 +253,7 @@ function addExplosion(x, y, color) {{
             radius: Math.random() * 4 + 2,
             color: color,
             alpha: 1,
-            decay: Math.random() * 0.035 + 0.02
+            decay: Math.random() * 0.03 + 0.02
         }});
     }}
 }}
@@ -260,46 +265,40 @@ function addTrail(x, y, color) {{
         radius: 12,
         color: color,
         alpha: 0.6,
-        decay: 0.06
+        decay: 0.05
     }});
 }}
 
-// 다양한 각도 경로(직각, 대각선, 대각선 복합) 생성 알고리즘
+// 맵 생성 알고리즘
 function generateComplexMap() {{
     tiles = [];
     let cx = 200;
     let cy = 200;
     
-    // 8방향 벡터 정의 (직진, 직각, 대각선 포함)
     const possibleDirs = [
-        {{ x: 1, y: 0 }},   // 우
-        {{ x: 1, y: 0 }},   // 우 (직진 가중치)
-        {{ x: 0, y: 1 }},   // 하
-        {{ x: 0, y: -1 }},  // 상
-        {{ x: 1, y: 1 }},   // 우하 대각선
-        {{ x: 1, y: -1 }},  // 우상 대각선
-        {{ x: -1, y: 1 }},  // 좌하 대각선
-        {{ x: -1, y: -1 }}  // 좌상 대각선
+        {{ x: 1, y: 0 }},
+        {{ x: 1, y: 0 }},
+        {{ x: 1, y: 0 }},
+        {{ x: 0, y: 1 }},
+        {{ x: 0, y: -1 }},
+        {{ x: 1, y: 1 }},
+        {{ x: 1, y: -1 }}
     ];
 
     tiles.push({{ x: cx, y: cy, isSwirl: false }});
     let lastDir = possibleDirs[0];
 
-    for (let i = 0; i < 300; i++) {{
+    for (let i = 0; i < 250; i++) {{
         let d;
         do {{
             d = possibleDirs[Math.floor(Math.random() * possibleDirs.length)];
-        }} while (d.x === -lastDir.x && d.y === -lastDir.y); // 완전 반대 방향(역주행) 방지
+        }} while (d.x === -lastDir.x && d.y === -lastDir.y);
 
         lastDir = d;
+        cx += d.x * (2 * R);
+        cy += d.y * (2 * R);
         
-        // 대각선 이동 시 거리 보정 (동일한 속도감 유지)
-        const distanceFactor = (d.x !== 0 && d.y !== 0) ? (Math.SQRT2 * R * 1.3) : (2 * R);
-        
-        cx += d.x * distanceFactor;
-        cy += d.y * distanceFactor;
-        
-        const isSwirl = Math.random() < 0.10 && i > 4;
+        const isSwirl = Math.random() < 0.12 && i > 3;
         tiles.push({{ x: cx, y: cy, isSwirl: isSwirl }});
     }}
 }}
@@ -315,29 +314,27 @@ function initGame() {{
     gameState = "READY";
     particles = [];
     planetTrails = [];
+    shakeAmount = 0;
+    shakeDuration = 0;
 
-    // 출발 타일 위치 세팅
     pivotPos = {{ x: tiles[0].x, y: tiles[0].y }};
     camX = pivotPos.x;
     camY = pivotPos.y;
     
     const nextTile = tiles[1];
-    
-    // 타일 사이의 명확한 벡터 각도 산출
     const targetDirAngle = Math.atan2(nextTile.y - pivotPos.y, nextTile.x - pivotPos.x);
     
-    // 정확히 이전 타일 위치에서 행성이 출발하도록 180도 뒤에서 시작
     currentAngle = targetDirAngle - Math.PI;
     targetAngle = targetDirAngle;
 
-    activePlanetType = 1; // 얼음 행성이 회전하며 시작
+    activePlanetType = 1;
     updateActivePos();
 
     scoreEl.innerText = "0";
     comboEl.innerText = "0";
     maxComboEl.innerText = "0";
     feedbackEl.innerText = "클릭하거나 아무 키나 눌러 시작하세요!";
-    feedbackEl.style.color = "#00e5ff";
+    feedbackEl.style.color = "#38bdf8";
     restartBtn.style.display = "none";
 }}
 
@@ -347,24 +344,32 @@ function updateActivePos() {{
 }}
 
 function update() {{
-    if (gameState !== "PLAYING") return;
+    if (gameState === "PLAYING") {{
+        // 회전 계산
+        currentAngle += baseRotSpeed * rotDirection;
+        updateActivePos();
 
-    currentAngle += baseRotSpeed * rotDirection;
-    updateActivePos();
+        // 트레일 입자 추가
+        const curColor = activePlanetType === 1 ? '#38bdf8' : '#ff3366';
+        addTrail(activePos.x, activePos.y, curColor);
 
-    const curColor = activePlanetType === 1 ? '#00e5ff' : '#ff0055';
-    addTrail(activePos.x, activePos.y, curColor);
+        // 판정 범위 초과 오버런 (Miss)
+        const passed = rotDirection === 1 
+            ? (currentAngle > targetAngle + 0.65) 
+            : (currentAngle < targetAngle - 0.65);
 
-    // 판정 초과 체크
-    const passed = rotDirection === 1 
-        ? (currentAngle > targetAngle + 0.65) 
-        : (currentAngle < targetAngle - 0.65);
-
-    if (passed) {{
-        triggerGameOver("타이밍 초과! (MISS)");
+        if (passed) {{
+            triggerGameOver("시간 초과! (MISS)");
+        }}
     }}
 
-    if (shakeAmount > 0) shakeAmount *= 0.88;
+    // 화면 쉐이크 2초 제어 (프레임 단위 차감)
+    if (shakeDuration > 0) {{
+        shakeDuration--;
+        if (shakeDuration <= 0) {{
+            shakeAmount = 0;
+        }}
+    }}
 }}
 
 function handleInput() {{
@@ -382,7 +387,7 @@ function handleInput() {{
 
     const diff = Math.abs(currentAngle - targetAngle);
 
-    if (diff < 0.35) {{
+    if (diff < 0.32) {{
         // PERFECT
         score += 100 + (combo * 15);
         combo++;
@@ -390,14 +395,15 @@ function handleInput() {{
         
         feedbackEl.innerText = "PERFECT!!";
         feedbackEl.style.color = "#4ade80";
-        shakeAmount = 4;
+        shakeAmount = 3;
+        shakeDuration = 10;
         
-        const curColor = activePlanetType === 1 ? '#00e5ff' : '#ff0055';
+        const curColor = activePlanetType === 1 ? '#38bdf8' : '#ff3366';
         addExplosion(activePos.x, activePos.y, curColor);
         playSound('PERFECT');
         
         advanceToNextTile();
-    }} else if (diff < 0.60) {{
+    }} else if (diff < 0.58) {{
         // GREAT
         score += 50;
         combo++;
@@ -406,6 +412,7 @@ function handleInput() {{
         feedbackEl.innerText = "GREAT";
         feedbackEl.style.color = "#facc15";
         shakeAmount = 2;
+        shakeDuration = 8;
         playSound('GREAT');
         
         advanceToNextTile();
@@ -422,82 +429,93 @@ function handleInput() {{
 function triggerGameOver(reason) {{
     gameState = "GAMEOVER";
     feedbackEl.innerText = `GAME OVER - ${{reason}}`;
-    feedbackEl.style.color = "#ff4d4d";
-    shakeAmount = 12;
+    feedbackEl.style.color = "#f87171";
+    
+    // 진동 강도 및 2초 제한 설정 (60FPS * 2초 = 120프레임)
+    shakeAmount = 8;
+    shakeDuration = 120;
+    
     playSound('MISS');
     restartBtn.style.display = "inline-block";
 }}
 
-// 허공 시작 현상을 완벽 차단하는 절대 타일 정렬 연산
+// 꺾임/대각선 타일에서도 허공 이동 없는 완벽 연속 위치 보정
 function advanceToNextTile() {{
+    // 기존에 회전하던 행성의 현재 물리적 좌표를 저장
+    const prevActiveX = activePos.x;
+    const prevActiveY = activePos.y;
+
     currentTileIdx++;
     const nextPivot = tiles[currentTileIdx];
     if (!nextPivot) return;
 
-    // 회전 반전 타일(Swirl) 처리
+    // Swirl 타일 확인
     if (nextPivot.isSwirl) {{
         rotDirection *= -1;
     }}
 
-    // [핵심] 이전 착지 타일 좌표로 피벗 완전 스냅 (허공 점프 방지)
+    // 새 타일로 피벗(중심) 이동
     pivotPos = {{ x: nextPivot.x, y: nextPivot.y }};
     activePlanetType = activePlanetType === 0 ? 1 : 0;
 
     const futureTile = tiles[currentTileIdx + 1];
     if (futureTile) {{
-        // 현재 타일에서 다음 타일로 가는 정확한 벡터 방향각 연산
-        let nextTargetDir = Math.atan2(futureTile.y - pivotPos.y, futureTile.x - pivotPos.x);
+        // 새로 바뀐 피벗 타일 기준, 기존 행성의 실제 위치에 대한 정확한 각도 재연산
+        const physicalAngle = Math.atan2(prevActiveX - pivotPos.y, prevActiveX - pivotPos.x);
         
-        // 입력 시점의 미세 오차 값 계산
-        let angleOffset = currentAngle - targetAngle;
+        // 다가올 타일의 절대 방향 연산
+        let nextTargetDir = Math.atan2(futureTile.y - pivotPos.y, futureTile.x - pivotPos.x);
 
-        // 회전 벡터 정규화 연산 (대각선/직각 각도 차이 보정)
-        let diff = nextTargetDir - targetAngle;
+        // 회전 방향에 따른 목표 각도 및 시작 각도 보정
+        let diff = nextTargetDir - physicalAngle;
         while (diff < -Math.PI) diff += Math.PI * 2;
         while (diff > Math.PI) diff -= Math.PI * 2;
 
         if (rotDirection === 1) {{
-            targetAngle = targetAngle + (diff < 0 ? diff + Math.PI * 2 : diff);
-            // 다음 회전은 이전 타일 위치(현재 Pivot)에 연결된 반대편(-PI)에서 연속성 있게 출발
-            currentAngle = targetAngle - Math.PI + angleOffset;
+            targetAngle = physicalAngle + (diff < 0 ? diff + Math.PI * 2 : diff);
+            currentAngle = physicalAngle;
         }} else {{
-            targetAngle = targetAngle + (diff > 0 ? diff - Math.PI * 2 : diff);
-            currentAngle = targetAngle + Math.PI + angleOffset;
+            targetAngle = physicalAngle + (diff > 0 ? diff - Math.PI * 2 : diff);
+            currentAngle = physicalAngle;
         }}
     }}
     
-    // 즉시 정렬된 위치 업데이트
+    // 끊김 없이 현재 물리 위치 연속 보장
     updateActivePos();
 }}
 
-// 렌더링 루프
+// 캔버스 렌더링 루프
 function draw() {{
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     ctx.save();
     
-    // 카메라 Lerp + 화면 흔들림(Shake)
+    // 카메라 추적 + 쉐이크 효과 (shakeDuration이 남았을 때만 작동)
     camX += (pivotPos.x - camX) * camLerpFactor;
     camY += (pivotPos.y - camY) * camLerpFactor;
 
-    const shakeX = (Math.random() - 0.5) * shakeAmount;
-    const shakeY = (Math.random() - 0.5) * shakeAmount;
+    let shakeX = 0;
+    let shakeY = 0;
+    if (shakeDuration > 0 && shakeAmount > 0) {{
+        shakeX = (Math.random() - 0.5) * shakeAmount;
+        shakeY = (Math.random() - 0.5) * shakeAmount;
+    }}
 
     ctx.translate(canvas.width / 2 - camX + shakeX, canvas.height / 2 - camY + shakeY);
 
-    // 1. 경로 선 (대각선/직각 부드럽게 잇기)
+    // 1. 타일 연결 경로
     ctx.beginPath();
     for (let i = 0; i < tiles.length; i++) {{
         if (i === 0) ctx.moveTo(tiles[i].x, tiles[i].y);
         else ctx.lineTo(tiles[i].x, tiles[i].y);
     }}
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
-    ctx.lineWidth = 10;
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.07)";
+    ctx.lineWidth = 8;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     ctx.stroke();
 
-    // 2. 타일 그리기
+    // 2. 직사각형 타일
     for (let i = 0; i < tiles.length; i++) {{
         const t = tiles[i];
         
@@ -508,17 +526,15 @@ function draw() {{
         ctx.roundRect(-TILE_W / 2, -TILE_H / 2, TILE_W, TILE_H, 8);
 
         if (i < currentTileIdx) {{
-            ctx.fillStyle = "rgba(255, 255, 255, 0.06)";
-            ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
+            ctx.fillStyle = "rgba(255, 255, 255, 0.08)";
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
         }} else if (i === currentTileIdx + 1) {{
-            // 목표 착지 타일 가이드
             ctx.fillStyle = "#fbbf24";
             ctx.strokeStyle = "#ffffff";
             ctx.shadowColor = "#fbbf24";
-            ctx.shadowBlur = 20;
+            ctx.shadowBlur = 18;
         }} else if (i === currentTileIdx) {{
-            // 현재 타일
-            ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
+            ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
             ctx.strokeStyle = "#ffffff";
         }} else {{
             ctx.fillStyle = "#1e293b";
@@ -532,7 +548,7 @@ function draw() {{
         if (t.isSwirl && i >= currentTileIdx) {{
             ctx.beginPath();
             ctx.arc(0, 0, 8, 0, Math.PI * 2);
-            ctx.strokeStyle = "#a855f7";
+            ctx.strokeStyle = "#c084fc";
             ctx.lineWidth = 3;
             ctx.stroke();
         }}
@@ -540,7 +556,7 @@ function draw() {{
         ctx.restore();
     }}
 
-    // 3. 행성 트레일(잔상)
+    // 3. 잔상 렌더링
     for (let i = planetTrails.length - 1; i >= 0; i--) {{
         const pt = planetTrails[i];
         ctx.beginPath();
@@ -550,7 +566,7 @@ function draw() {{
         ctx.fill();
         ctx.globalAlpha = 1.0;
 
-        pt.radius *= 0.93;
+        pt.radius *= 0.94;
         pt.alpha -= pt.decay;
         if (pt.alpha <= 0) planetTrails.splice(i, 1);
     }}
@@ -558,31 +574,31 @@ function draw() {{
     const redPos = activePlanetType === 1 ? pivotPos : activePos;
     const bluePos = activePlanetType === 1 ? activePos : pivotPos;
 
-    // 4. 행성 연결 축
+    // 4. 행성 간 연결선
     ctx.beginPath();
     ctx.moveTo(redPos.x, redPos.y);
     ctx.lineTo(bluePos.x, bluePos.y);
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.65)";
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.6)";
     ctx.lineWidth = 4;
     ctx.stroke();
 
     // 5. 불 행성
     ctx.beginPath();
     ctx.arc(redPos.x, redPos.y, 14, 0, Math.PI * 2);
-    ctx.fillStyle = "#ff0055";
-    ctx.shadowColor = "#ff0055";
-    ctx.shadowBlur = activePlanetType === 0 ? 22 : 8;
+    ctx.fillStyle = "#ff3366";
+    ctx.shadowColor = "#ff3366";
+    ctx.shadowBlur = activePlanetType === 0 ? 20 : 8;
     ctx.fill();
 
     // 6. 얼음 행성
     ctx.beginPath();
     ctx.arc(bluePos.x, bluePos.y, 14, 0, Math.PI * 2);
-    ctx.fillStyle = "#00e5ff";
-    ctx.shadowColor = "#00e5ff";
-    ctx.shadowBlur = activePlanetType === 1 ? 22 : 8;
+    ctx.fillStyle = "#38bdf8";
+    ctx.shadowColor = "#38bdf8";
+    ctx.shadowBlur = activePlanetType === 1 ? 20 : 8;
     ctx.fill();
 
-    // 7. 파티클 효과
+    // 7. 파티클 폭발
     for (let i = particles.length - 1; i >= 0; i--) {{
         const p = particles[i];
         ctx.beginPath();
