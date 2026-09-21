@@ -7,11 +7,12 @@ st.set_page_config(
     layout="centered"
 )
 
-# 스트림릿 테마 커스텀 및 가이드 스타일 정의 (상단 남색 -> 하단 검은색 그라데이션)
+# 스트림릿 테마 커스텀 및 가이드 스타일 정의
 st.markdown("""
 <style>
+    /* 전체 배경: 검은색과 남색 그라데이션 */
     .stApp {
-        background: linear-gradient(180deg, #1e1b4b 0%, #0f172a 40%, #030712 100%);
+        background: linear-gradient(135deg, #090a0f 0%, #0d1527 100%);
         color: #ffffff;
     }
     h1 {
@@ -20,23 +21,25 @@ st.markdown("""
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         font-weight: 900;
-        margin-bottom: 0.1rem;
+        margin-bottom: 1.2rem;
     }
-    .stCaption {
-        text-align: center;
-        color: #94a3b8;
-        font-size: 0.95rem;
-        margin-bottom: 0.8rem;
+    
+    /* 선택 옵션(Selectbox) 라벨 글자색 흰색으로 변경 */
+    div[data-baseweb="select"] label, .stSelectbox label p {
+        color: #ffffff !important;
+        font-weight: 600 !important;
+        font-size: 0.95rem !important;
     }
+
     .guide-container {
-        background-color: rgba(15, 23, 42, 0.75);
-        border: 1px solid #334155;
+        background-color: rgba(17, 24, 39, 0.7);
+        border: 1px solid #1f2937;
         border-radius: 12px;
         padding: 12px 16px;
-        margin-bottom: 12px;
+        margin-bottom: 16px;
         font-size: 0.88rem;
         line-height: 1.5;
-        backdrop-filter: blur(8px);
+        backdrop-filter: blur(4px);
     }
     .guide-title {
         font-weight: bold;
@@ -53,16 +56,15 @@ st.markdown("""
         flex-wrap: wrap;
     }
     .tile-badge {
-        background-color: rgba(30, 41, 59, 0.8);
+        background-color: #1e293b;
         padding: 3px 8px;
         border-radius: 6px;
-        border: 1px solid #475569;
+        border: 1px solid #334155;
     }
 </style>
 """, unsafe_allow_html=True)
 
 st.title("🔥 A Dance of Fire and Ice ❄️")
-st.caption("고정밀 수학적 회전 엔진 & Web Audio API 내장 웹 에디션")
 
 # 게임 설명 가이드 상자
 st.markdown("""
@@ -125,7 +127,7 @@ game_html = f"""
         body {{
             margin: 0;
             padding: 0;
-            background: linear-gradient(180deg, #1e1b4b 0%, #0f172a 50%, #020617 100%);
+            background: transparent;
             color: #ffffff;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             display: flex;
@@ -140,10 +142,10 @@ game_html = f"""
             margin-top: 5px;
         }}
         #gameCanvas {{
-            border: 2px solid #334155;
+            border: 2px solid #1a2332;
             border-radius: 20px;
-            background: linear-gradient(180deg, #0f172a 0%, #020617 100%);
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9), 0 0 20px rgba(56, 189, 248, 0.15);
+            background: radial-gradient(circle at center, #0f172a 0%, #060913 100%);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 20px rgba(51, 204, 255, 0.1);
             cursor: pointer;
         }}
         #info {{
@@ -152,7 +154,7 @@ game_html = f"""
         }}
         .stats {{
             font-size: 19px;
-            color: #94a3b8;
+            color: #8395a7;
             letter-spacing: 0.5px;
         }}
         .stats span {{
@@ -265,7 +267,7 @@ function playSound(type) {{
 const R = 46; 
 const TILE_W = 62;
 const TILE_H = 36;
-const enableSpeedTiles = {enable_speed_tiles};
+const enableSpeedTiles = {enable_speed_tiles}; // 속도 타일 모드 여부
 
 // 객체 데이터 구조
 let tiles = [];
@@ -281,7 +283,7 @@ const initialSpeedSetting = {selected_speed};
 let speedMultiplier = 1.0;
 let baseRotSpeed = initialSpeedSetting;
 
-let activePlanetType = 1;
+let activePlanetType = 1; // 0: Red, 1: Blue
 
 // 카메라 & 쉐이크 제어
 let camX = 0;
@@ -328,6 +330,7 @@ function addTrail(x, y, color) {{
     }});
 }}
 
+// 맵 생성 알고리즘
 function generateComplexMap() {{
     tiles = [];
     let cx = 200;
@@ -580,7 +583,7 @@ function draw() {{
         if (i === 0) ctx.moveTo(tiles[i].x, tiles[i].y);
         else ctx.lineTo(tiles[i].x, tiles[i].y);
     }}
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.07)";
     ctx.lineWidth = 8;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
