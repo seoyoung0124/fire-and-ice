@@ -63,7 +63,7 @@ st.markdown("""
 st.title("🔥 A Dance of Fire and Ice ❄️")
 st.caption("고정밀 수학적 회전 엔진 & Web Audio API 내장 웹 에디션")
 
-# 게임 설명 가이드 상자 추가
+# 게임 설명 가이드 상자
 st.markdown("""
 <div class="guide-container">
     <div class="guide-title">🎮 게임 이용 안내</div>
@@ -77,9 +77,9 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# 난이도 설정
-col1, col2, col3 = st.columns([1, 2, 1])
-with col2:
+# 난이도 및 모드 설정
+col1, col2 = st.columns(2)
+with col1:
     speed_option = st.selectbox(
         "🎮 시작 회전 속도 (BPM / 난이도)",
         options=[
@@ -93,6 +93,16 @@ with col2:
         index=1
     )
 
+with col2:
+    tile_mode_option = st.selectbox(
+        "⚡ 속도 타일 모드",
+        options=[
+            "일반 모드 (속도 변동 없음)",
+            "특수 타일 모드 (가속/감속 포함)"
+        ],
+        index=0  # 기본값: 속도 타일 없는 일반 모드
+    )
+
 speed_map = {
     "Easy (BPM 110)": 0.040,
     "Normal (BPM 150)": 0.055,
@@ -102,6 +112,7 @@ speed_map = {
     "Speed Demon (BPM 400)": 0.155
 }
 selected_speed = speed_map[speed_option]
+enable_speed_tiles = "true" if tile_mode_option == "특수 타일 모드 (가속/감속 포함)" else "false"
 
 game_html = f"""
 <!DOCTYPE html>
@@ -249,10 +260,11 @@ function playSound(type) {{
     }}
 }}
 
-// 게임 상수
+// 게임 상수 및 설정
 const R = 46; 
 const TILE_W = 62;
 const TILE_H = 36;
+const enableSpeedTiles = {enable_speed_tiles}; // 속도 타일 모드 여부
 
 // 객체 데이터 구조
 let tiles = [];
@@ -315,7 +327,7 @@ function addTrail(x, y, color) {{
     }});
 }}
 
-// 맵 생성 알고리즘
+// 맵 생성 알고리즘 (속도 타일 모드 옵션 반영)
 function generateComplexMap() {{
     tiles = [];
     let cx = 200;
@@ -350,7 +362,8 @@ function generateComplexMap() {{
 
         specialTileCooldown--;
 
-        if (specialTileCooldown <= 0 && !isSwirl) {{
+        // 속도 타일 모드가 활성화된 경우에만 가속/감속 타일 생성
+        if (enableSpeedTiles && specialTileCooldown <= 0 && !isSwirl) {{
             const rand = Math.random();
             if (rand < 0.30) {{
                 const typeRand = Math.random();
@@ -511,17 +524,19 @@ function advanceToNextTile() {{
         rotDirection *= -1;
     }}
 
-    // 속도 변경 및 지속 상태 적용
-    if (nextPivot.speedType === 'fast') {{
-        speedMultiplier *= 1.25;
-        if (speedMultiplier > 2.2) speedMultiplier = 2.2;
-        feedbackEl.innerText = "⚡ SPEED UP!!";
-        feedbackEl.style.color = "#ff7733";
-    }} else if (nextPivot.speedType === 'slow') {{
-        speedMultiplier *= 0.8;
-        if (speedMultiplier < 0.45) speedMultiplier = 0.45;
-        feedbackEl.innerText = "🐢 SLOW DOWN..";
-        feedbackEl.style.color = "#a3e635";
+    // 속도 변경 및 지속 상태 적용 (속도 타일 모드일 때만 적용)
+    if (enableSpeedTiles) {{
+        if (nextPivot.speedType === 'fast') {{
+            speedMultiplier *= 1.25;
+            if (speedMultiplier > 2.2) speedMultiplier = 2.2;
+            feedbackEl.innerText = "⚡ SPEED UP!!";
+            feedbackEl.style.color = "#ff7733";
+        }} else if (nextPivot.speedType === 'slow') {{
+            speedMultiplier *= 0.8;
+            if (speedMultiplier < 0.45) speedMultiplier = 0.45;
+            feedbackEl.innerText = "🐢 SLOW DOWN..";
+            feedbackEl.style.color = "#a3e635";
+        }}
     }}
 
     baseRotSpeed = initialSpeedSetting * speedMultiplier;
