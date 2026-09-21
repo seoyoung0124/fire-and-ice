@@ -1,29 +1,31 @@
-import streamlit as st
-
-# Set page configuration with a dark theme background feel
-st.set_page_config(page_title="페이지 만들기 테스트", page_icon="🧪", layout="centered")
-
-# Custom CSS to ensure a dark background styling
-st.markdown(
-    """
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>페이지 만들기 테스트</title>
     <style>
-    .stApp {
-        background-color: #0e1117;
-        color: #ffffff;
-    }
-    .test-title {
-        font-size: 3rem;
-        font-weight: bold;
-        text-align: center;
-        margin-top: 20vh;
-        color: #ffffff;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
+        /* 웹페이지 전체 배경을 검은색으로 설정 */
+        body {
+            background-color: #121212; /* 어두운 다크 그레이/블랙 색상 */
+            color: #ffffff;            /* 글자 색상은 흰색으로 설정 */
+            font-family: 'Apple SD Gothic Neo', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
 
-# Display the text on the page
-st.markdown(
-    '<div class="test-title">페이지 만들기 테스트</div>', unsafe_allow_html=True
-)
+        .test-title {
+            font-size: 2.5rem;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="test-title">페이지 만들기 테스트</div>
+
+</body>
+</html>
