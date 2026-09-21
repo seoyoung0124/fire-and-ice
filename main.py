@@ -7,7 +7,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# 스트림릿 다크 테마
+# 스트림릿 어두운 테마 설정
 st.markdown("""
 <style>
     .stApp {
@@ -18,6 +18,7 @@ st.markdown("""
         text-align: center;
         color: #ffffff;
         font-weight: 700;
+        margin-bottom: 0.2rem;
     }
     .stCaption {
         text-align: center;
@@ -27,16 +28,35 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.title("🔥 A Dance of Fire and Ice ❄️")
-st.caption("행성이 타일 직상단에 올 때 스페이스바/클릭으로 맞추세요!")
+st.caption("박자에 맞춰 타일 위로 행성을 착지시키세요!")
 
-game_html = """
+# 난이도(속도) 선택UI
+col1, col2, col3 = st.columns([1, 2, 1])
+with col2:
+    speed_option = st.selectbox(
+        "🎮 회전 속도 (난이도) 선택",
+        options=["쉬움 (Slow)", "보통 (Normal)", "빠름 (Fast)", "매우 빠름 (Extreme)"],
+        index=1
+    )
+
+# 선택한 난이도를 JS 회전 속도 값으로 변환
+speed_map = {
+    "쉬움 (Slow)": 0.035,
+    "보통 (Normal)": 0.05,
+    "빠름 (Fast)": 0.07,
+    "매우 빠름 (Extreme)": 0.095
+}
+selected_speed = speed_map[speed_option]
+
+# 게임 엔진 HTML/JS
+game_html = f"""
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
     <style>
-        * { box-sizing: border-box; }
-        body {
+        * {{ box-sizing: border-box; }}
+        body {{
             margin: 0;
             padding: 0;
             background-color: #0b0e14;
@@ -48,40 +68,59 @@ game_html = """
             justify-content: center;
             user-select: none;
             overflow: hidden;
-        }
-        #gameCanvas {
+        }}
+        #gameCanvas {{
             border: 2px solid #1f293d;
             border-radius: 16px;
             background-color: #121824;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
             cursor: pointer;
-        }
-        #info {
+        }}
+        #info {{
             margin-top: 15px;
             text-align: center;
-        }
-        .stats {
+        }}
+        .stats {{
             font-size: 18px;
             color: #8a99ad;
-        }
-        .stats span {
+        }}
+        .stats span {{
             color: #ffffff;
             font-weight: bold;
-        }
-        .status {
+        }}
+        .status {{
             font-size: 22px;
             font-weight: 800;
             margin-top: 8px;
             height: 30px;
-        }
+        }}
+        #restartBtn {{
+            display: none;
+            margin-top: 12px;
+            padding: 10px 24px;
+            font-size: 16px;
+            font-weight: bold;
+            color: #ffffff;
+            background-color: #ff3366;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(255, 51, 102, 0.4);
+            transition: transform 0.1s, background-color 0.2s;
+        }}
+        #restartBtn:hover {{
+            background-color: #ff527b;
+            transform: scale(1.05);
+        }}
     </style>
 </head>
 <body>
 
-<canvas id="gameCanvas" width="650" height="400"></canvas>
+<canvas id="gameCanvas" width="650" height="380"></canvas>
 <div id="info">
-    <div class="stats">점수: <span id="score">0</span> | 콤보: <span id="combo">0</span></div>
+    <div class="stats">점수: <span id="score">0</span> | 최고 콤보: <span id="combo">0</span></div>
     <div id="feedback" class="status" style="color: #64b5f6;">클릭하거나 아무 키나 눌러 시작하세요!</div>
+    <button id="restartBtn" onclick="initGame()">🔄 다시 시작</button>
 </div>
 
 <script>
@@ -90,61 +129,73 @@ const ctx = canvas.getContext('2d');
 const scoreEl = document.getElementById('score');
 const comboEl = document.getElementById('combo');
 const feedbackEl = document.getElementById('feedback');
+const restartBtn = document.getElementById('restartBtn');
 
-// -------------------------------------------------------------
-// 핵심 게임 메커니즘 변수
-// -------------------------------------------------------------
-const R = 45;              // 피벗 중심 간격 (행성 반지름)
-const TILE_W = 60;         // 타일 가로 길이
-const TILE_H = 34;         // 타일 세로 길이
+const R = 45; 
+const TILE_W = 60;
+const TILE_H = 34;
 
 let tiles = [];
 let currentTileIdx = 0;
+let pivotPos = {{ x: 0, y: 0 }};
+let activePos = {{ x: 0, y: 0 }};
 
-let pivotPos = { x: 0, y: 0 };
-let activePos = { x: 0, y: 0 };
+let currentAngle = 0;
+let startAngle = 0;
+let targetAngle = Math.PI;
+let baseRotSpeed = {selected_speed};
 
-let currentAngle = 0;       // 현재 진행 각도
-let startAngle = 0;         // 이번 회전의 시작 각도
-let targetAngle = Math.PI;  // 목표 착지 각도 (항상 180도)
-let rotSpeed = 0.05;        // 회전 속도
-
-let activePlanetType = 1;   // 0: Red(불), 1: Blue(얼음) 회전 중
+let activePlanetType = 1; // 0: Red, 1: Blue
 let score = 0;
 let combo = 0;
-let gameStarted = false;
+let maxCombo = 0;
+
+let gameState = "READY"; // READY, PLAYING, GAMEOVER
 
 // -------------------------------------------------------------
-// 직교 타일 트랙 생성 (상/하/좌/우 연쇄 구조)
+// 랜덤 타일 트랙 생성
 // -------------------------------------------------------------
-function generateMap() {
+function generateRandomMap() {{
     tiles = [];
     let cx = 150;
-    let cy = 200;
+    let cy = 190;
     
-    // 이동 방향 패턴 (0: 우, 1: 하, 2: 우, 3: 상)
-    const dirs = [
-        { x: 1, y: 0 }, { x: 1, y: 0 }, { x: 0, y: 1 },
-        { x: 1, y: 0 }, { x: 1, y: 0 }, { x: 0, y: -1 }
+    const possibleDirs = [
+        {{ x: 1, y: 0 }},  // 우
+        {{ x: 1, y: 0 }},  // 우 (우직진 확률 높임)
+        {{ x: 0, y: 1 }},  // 하
+        {{ x: 0, y: -1 }}  // 상
     ];
 
-    tiles.push({ x: cx, y: cy });
+    tiles.push({{ x: cx, y: cy }});
 
-    for (let i = 0; i < 200; i++) {
-        let d = dirs[i % dirs.length];
+    let lastDir = possibleDirs[0];
+
+    for (let i = 0; i < 200; i++) {{
+        let d;
+        // 이전 방향과 반대로 돌아가지 않도록 필터링
+        do {{
+            d = possibleDirs[Math.floor(Math.random() * possibleDirs.length)];
+        }} while (d.x === -lastDir.x && d.y === -lastDir.y);
+
+        lastDir = d;
         cx += d.x * (2 * R);
         cy += d.y * (2 * R);
-        tiles.push({ x: cx, y: cy });
-    }
+        tiles.push({{ x: cx, y: cy }});
+    }}
+}}
 
-    resetGame();
-}
-
-function resetGame() {
-    currentTileIdx = 0;
-    pivotPos = { x: tiles[0].x, y: tiles[0].y };
+function initGame() {{
+    generateRandomMap();
     
-    // 첫번째 목표 타일 방향으로 오프셋 연산
+    currentTileIdx = 0;
+    score = 0;
+    combo = 0;
+    maxCombo = 0;
+    gameState = "READY";
+
+    pivotPos = {{ x: tiles[0].x, y: tiles[0].y }};
+    
     const nextTile = tiles[1];
     const baseAngle = Math.atan2(nextTile.y - pivotPos.y, nextTile.x - pivotPos.x);
     
@@ -152,115 +203,120 @@ function resetGame() {
     currentAngle = startAngle;
     targetAngle = baseAngle;
 
-    activePlanetType = 1; // Blue 회전 시작
+    activePlanetType = 1;
     updateActivePos();
-}
 
-function updateActivePos() {
+    scoreEl.innerText = "0";
+    comboEl.innerText = "0";
+    feedbackEl.innerText = "클릭하거나 아무 키나 눌러 시작하세요!";
+    feedbackEl.style.color = "#64b5f6";
+    restartBtn.style.display = "none";
+}}
+
+function updateActivePos() {{
     activePos.x = pivotPos.x + Math.cos(currentAngle) * (2 * R);
     activePos.y = pivotPos.y + Math.sin(currentAngle) * (2 * R);
-}
-
-generateMap();
+}}
 
 // -------------------------------------------------------------
-// 프레임 루프 및 위치 계산
+// 프레임 업데이트
 // -------------------------------------------------------------
-function update() {
-    if (!gameStarted) return;
+function update() {{
+    if (gameState !== "PLAYING") return;
 
-    currentAngle += rotSpeed;
+    currentAngle += baseRotSpeed;
     updateActivePos();
 
-    // 입력 없이 목표 각도를 너무 지나치면 오버슈트(MISS)
-    if (currentAngle > targetAngle + 0.8) {
-        combo = 0;
-        feedbackEl.innerText = "TOO LATE!";
-        feedbackEl.style.color = "#ff5252";
-        comboEl.innerText = combo;
-        
-        // 각도 재설정 (다시 회전하도록)
-        startAngle = targetAngle;
-        targetAngle += Math.PI;
-    }
-}
+    // 360도 회전 초과 시 (한 바퀴 이상 돌 때까지 입력을 안 함) -> GAME OVER
+    if (currentAngle > targetAngle + 0.6) {{
+        triggerGameOver("시간 초과! (Miss)");
+    }}
+}}
 
 // -------------------------------------------------------------
-// 판정 로직 (각도 차이 기반 정밀 판정)
+// 판정 및 게임 오버 처리
 // -------------------------------------------------------------
-function handleInput() {
-    if (!gameStarted) {
-        gameStarted = true;
+function handleInput() {{
+    if (gameState === "READY") {{
+        gameState = "PLAYING";
         feedbackEl.innerText = "START!";
         feedbackEl.style.color = "#4caf50";
         return;
-    }
+    }}
+
+    if (gameState === "GAMEOVER") return;
 
     const diff = Math.abs(currentAngle - targetAngle);
 
-    if (diff < 0.25) {
+    if (diff < 0.28) {{
         score += 100 + (combo * 10);
         combo++;
+        if (combo > maxCombo) maxCombo = combo;
         feedbackEl.innerText = "PERFECT!";
         feedbackEl.style.color = "#00e676";
         advanceToNextTile();
-    } else if (diff < 0.45) {
+    }} else if (diff < 0.50) {{
         score += 50;
         combo++;
+        if (combo > maxCombo) maxCombo = combo;
         feedbackEl.innerText = "GREAT";
         feedbackEl.style.color = "#ffeb3b";
         advanceToNextTile();
-    } else {
-        combo = 0;
-        feedbackEl.innerText = "MISS!";
-        feedbackEl.style.color = "#ff5252";
-    }
+    }} else {{
+        // 박자를 놓침 -> MISS 및 게임 오버
+        triggerGameOver("MISS!");
+    }}
 
     scoreEl.innerText = score;
-    comboEl.innerText = combo;
-}
+    comboEl.innerText = maxCombo;
+}}
 
-function advanceToNextTile() {
+function triggerGameOver(reason) {{
+    gameState = "GAMEOVER";
+    feedbackEl.innerText = `GAME OVER - ${{reason}}`;
+    feedbackEl.style.color = "#ff5252";
+    restartBtn.style.display = "inline-block";
+}}
+
+function advanceToNextTile() {{
     currentTileIdx++;
     const nextPivot = tiles[currentTileIdx];
     if (!nextPivot) return;
 
-    // 피벗을 성공한 다음 타일 위치로 강제 고정
-    pivotPos = { x: nextPivot.x, y: nextPivot.y };
+    pivotPos = {{ x: nextPivot.x, y: nextPivot.y }};
     activePlanetType = activePlanetType === 0 ? 1 : 0;
 
     const futureTile = tiles[currentTileIdx + 1];
-    if (futureTile) {
+    if (futureTile) {{
         const baseAngle = Math.atan2(futureTile.y - pivotPos.y, futureTile.x - pivotPos.x);
         startAngle = baseAngle - Math.PI;
         currentAngle = startAngle;
         targetAngle = baseAngle;
-    }
+    }}
     updateActivePos();
-}
+}}
 
 // -------------------------------------------------------------
-// Canvas 그래픽 렌더링
+// Canvas 렌더링
 // -------------------------------------------------------------
-function draw() {
+function draw() {{
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     ctx.save();
-    // 피벗 타일을 카메라 중심에 고정
     ctx.translate(canvas.width / 2 - pivotPos.x, canvas.height / 2 - pivotPos.y);
 
-    // 1. 경로 라인
+    // 1. 경로 선
     ctx.beginPath();
-    for (let i = 0; i < tiles.length; i++) {
+    for (let i = 0; i < tiles.length; i++) {{
         if (i === 0) ctx.moveTo(tiles[i].x, tiles[i].y);
         else ctx.lineTo(tiles[i].x, tiles[i].y);
-    }
+    }}
     ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
     ctx.lineWidth = 6;
     ctx.stroke();
 
-    // 2. 직사각형 타일 렌더링
-    for (let i = 0; i < tiles.length; i++) {
+    // 2. 직사각형 타일
+    for (let i = 0; i < tiles.length; i++) {{
         const t = tiles[i];
         
         ctx.save();
@@ -269,33 +325,32 @@ function draw() {
         ctx.beginPath();
         ctx.roundRect(-TILE_W / 2, -TILE_H / 2, TILE_W, TILE_H, 6);
 
-        if (i < currentTileIdx) {
+        if (i < currentTileIdx) {{
             ctx.fillStyle = "rgba(255, 255, 255, 0.1)";
             ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
-        } else if (i === currentTileIdx + 1) {
+        }} else if (i === currentTileIdx + 1) {{
             ctx.fillStyle = "#ffd700";
             ctx.strokeStyle = "#ffffff";
             ctx.shadowColor = "#ffd700";
             ctx.shadowBlur = 12;
-        } else if (i === currentTileIdx) {
+        }} else if (i === currentTileIdx) {{
             ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
             ctx.strokeStyle = "#ffffff";
-        } else {
+        }} else {{
             ctx.fillStyle = "#1e293b";
             ctx.strokeStyle = "#334155";
-        }
+        }}
 
         ctx.lineWidth = 2;
         ctx.fill();
         ctx.stroke();
         ctx.restore();
-    }
+    }}
 
-    // 위치 할당 (Red/Blue 구분)
     const redPos = activePlanetType === 1 ? pivotPos : activePos;
     const bluePos = activePlanetType === 1 ? activePos : pivotPos;
 
-    // 3. 행성 연결 선
+    // 3. 연결선
     ctx.beginPath();
     ctx.moveTo(redPos.x, redPos.y);
     ctx.lineTo(bluePos.x, bluePos.y);
@@ -303,7 +358,7 @@ function draw() {
     ctx.lineWidth = 4;
     ctx.stroke();
 
-    // 4. 불 행성 (Red)
+    // 4. 불 행성
     ctx.beginPath();
     ctx.arc(redPos.x, redPos.y, 14, 0, Math.PI * 2);
     ctx.fillStyle = "#ff3366";
@@ -311,7 +366,7 @@ function draw() {
     ctx.shadowBlur = 14;
     ctx.fill();
 
-    // 5. 얼음 행성 (Blue)
+    // 5. 얼음 행성
     ctx.beginPath();
     ctx.arc(bluePos.x, bluePos.y, 14, 0, Math.PI * 2);
     ctx.fillStyle = "#33ccff";
@@ -320,27 +375,27 @@ function draw() {
     ctx.fill();
 
     ctx.restore();
-}
+}}
 
-function loop() {
+function loop() {{
     update();
     draw();
     requestAnimationFrame(loop);
-}
+}}
 
-// 이벤트 바인딩
-window.addEventListener('keydown', (e) => {
-    if (e.code === 'Space' || e.key !== '') {
+window.addEventListener('keydown', (e) => {{
+    if (e.code === 'Space' || e.key !== '') {{
         handleInput();
-    }
-});
+    }}
+}});
 
 canvas.addEventListener('mousedown', handleInput);
 
+initGame();
 loop();
 </script>
 </body>
 </html>
 """
 
-components.html(game_html, height=520)
+components.html(game_html, height=540)
