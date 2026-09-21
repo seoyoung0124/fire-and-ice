@@ -138,44 +138,43 @@ let currentTileIdx = 0;
 let pivotPos = {{ x: 0, y: 0 }};
 let activePos = {{ x: 0, y: 0 }};
 
-// 부드러운 카메라 추적 변수
+// 카메라 부드러운 추적
 let camX = 0;
 let camY = 0;
 const camLerpFactor = 0.08; 
 
 let currentAngle = 0;
-let startAngle = 0;
-let targetAngle = Math.PI;
+let targetAngle = 0;
 let baseRotSpeed = {selected_speed};
 
-let activePlanetType = 1;
+let activePlanetType = 1; // 0: Red, 1: Blue
 let score = 0;
 let combo = 0;
 let maxCombo = 0;
 
 let gameState = "READY";
 
+// 랜덤 타일 경로 생성
 function generateRandomMap() {{
     tiles = [];
     let cx = 150;
     let cy = 190;
     
     const possibleDirs = [
-        {{ x: 1, y: 0 }},
-        {{ x: 1, y: 0 }},
-        {{ x: 0, y: 1 }},
-        {{ x: 0, y: -1 }}
+        {{ x: 1, y: 0 }},  // 우
+        {{ x: 1, y: 0 }},  // 우 (직진 가중치)
+        {{ x: 0, y: 1 }},  // 하
+        {{ x: 0, y: -1 }}  // 상
     ];
 
     tiles.push({{ x: cx, y: cy }});
-
     let lastDir = possibleDirs[0];
 
     for (let i = 0; i < 200; i++) {{
         let d;
         do {{
             d = possibleDirs[Math.floor(Math.random() * possibleDirs.length)];
-        }} while (d.x === -lastDir.x && d.y === -lastDir.y);
+        }} while (d.x === -lastDir.x && d.y === -lastDir.y); // 역주행 방지
 
         lastDir = d;
         cx += d.x * (2 * R);
@@ -198,11 +197,11 @@ function initGame() {{
     camY = pivotPos.y;
     
     const nextTile = tiles[1];
-    const baseAngle = Math.atan2(nextTile.y - pivotPos.y, nextTile.x - pivotPos.x);
+    const targetDirAngle = Math.atan2(nextTile.y - pivotPos.y, nextTile.x - pivotPos.x);
     
-    startAngle = baseAngle - Math.PI;
-    currentAngle = startAngle;
-    targetAngle = baseAngle;
+    // 첫 시작 시 180도 뒤에서 출발하여 목표 각도까지 회전
+    currentAngle = targetDirAngle - Math.PI;
+    targetAngle = targetDirAngle;
 
     activePlanetType = 1;
     updateActivePos();
@@ -225,6 +224,7 @@ function update() {{
     currentAngle += baseRotSpeed;
     updateActivePos();
 
+    // 입력 타이밍을 놓쳐 목표 각도를 지나친 경우
     if (currentAngle > targetAngle + 0.6) {{
         triggerGameOver("시간 초과! (Miss)");
     }}
@@ -242,14 +242,14 @@ function handleInput() {{
 
     const diff = Math.abs(currentAngle - targetAngle);
 
-    if (diff < 0.28) {{
+    if (diff < 0.32) {{
         score += 100 + (combo * 10);
         combo++;
         if (combo > maxCombo) maxCombo = combo;
         feedbackEl.innerText = "PERFECT!";
         feedbackEl.style.color = "#00e676";
         advanceToNextTile();
-    }} else if (diff < 0.50) {{
+    }} else if (diff < 0.55) {{
         score += 50;
         combo++;
         if (combo > maxCombo) maxCombo = combo;
@@ -261,7 +261,7 @@ function handleInput() {{
     }}
 
     scoreEl.innerText = score;
-    comboEl.innerText = maxCombo;
+    comboEl.innerText = combo;
 }}
 
 function triggerGameOver(reason) {{
@@ -271,20 +271,27 @@ function triggerGameOver(reason) {{
     restartBtn.style.display = "inline-block";
 }}
 
+// 타일 이동 및 연속성 각도 보정 함수
 function advanceToNextTile() {{
     currentTileIdx++;
     const nextPivot = tiles[currentTileIdx];
     if (!nextPivot) return;
 
+    // 회전하던 행성이 새로운 Pivot 타일 위치로 스냅
     pivotPos = {{ x: nextPivot.x, y: nextPivot.y }};
     activePlanetType = activePlanetType === 0 ? 1 : 0;
 
     const futureTile = tiles[currentTileIdx + 1];
     if (futureTile) {{
-        const baseAngle = Math.atan2(futureTile.y - pivotPos.y, futureTile.x - pivotPos.x);
-        startAngle = baseAngle - Math.PI;
-        currentAngle = startAngle;
-        targetAngle = baseAngle;
+        // 다가올 타일의 목표 방향 각도 연산
+        let nextTargetDirAngle = Math.atan2(futureTile.y - pivotPos.y, futureTile.x - pivotPos.x);
+        
+        // 회전 각도 부드러운 연결: 이전 타일에 도달한 현재 각도를 바탕으로 정렬
+        let angleOffset = currentAngle - targetAngle; // 입력 시점의 미세 오차
+        
+        // 다음 회전은 새로 바뀐 Pivot 기준의 반대편(PI 차감)부터 시작
+        currentAngle = nextTargetDirAngle - Math.PI + angleOffset;
+        targetAngle = nextTargetDirAngle;
     }}
     updateActivePos();
 }}
@@ -294,13 +301,13 @@ function draw() {{
 
     ctx.save();
     
-    // 부드러운 카메라 이동 (Lerp 적용)
+    // 카메라 위치 부드럽게 보간 (Lerp)
     camX += (pivotPos.x - camX) * camLerpFactor;
     camY += (pivotPos.y - camY) * camLerpFactor;
 
     ctx.translate(canvas.width / 2 - camX, canvas.height / 2 - camY);
 
-    // 1. 경로 선
+    // 1. 타일 연결 선
     ctx.beginPath();
     for (let i = 0; i < tiles.length; i++) {{
         if (i === 0) ctx.moveTo(tiles[i].x, tiles[i].y);
@@ -345,7 +352,7 @@ function draw() {{
     const redPos = activePlanetType === 1 ? pivotPos : activePos;
     const bluePos = activePlanetType === 1 ? activePos : pivotPos;
 
-    // 3. 연결선
+    // 3. 행성 간 연결선
     ctx.beginPath();
     ctx.moveTo(redPos.x, redPos.y);
     ctx.lineTo(bluePos.x, bluePos.y);
