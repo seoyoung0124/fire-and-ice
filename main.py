@@ -7,7 +7,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# 스트림릿 전체 어두운 테마 설정
+# 스트림릿 다크 테마
 st.markdown("""
 <style>
     .stApp {
@@ -27,7 +27,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.title("🔥 A Dance of Fire and Ice ❄️")
-st.caption("키보드 아무 키나 누르거나 화면을 클릭하여 박자에 맞추세요!")
+st.caption("행성이 타일 직상단에 올 때 스페이스바/클릭으로 맞추세요!")
 
 game_html = """
 <!DOCTYPE html>
@@ -92,35 +92,37 @@ const comboEl = document.getElementById('combo');
 const feedbackEl = document.getElementById('feedback');
 
 // -------------------------------------------------------------
-// 수치 및 기하학 상수
+// 핵심 게임 메커니즘 변수
 // -------------------------------------------------------------
-const R = 45;              // 회전 반지름 (Orbit Radius)
-const TILE_STEP = 2 * R;   // 타일 간 거리 (90px - Exact 2R)
-const TILE_W = 60;         // 직사각형 타일 너비
-const TILE_H = 34;         // 직사각형 타일 높이
+const R = 45;              // 피벗 중심 간격 (행성 반지름)
+const TILE_W = 60;         // 타일 가로 길이
+const TILE_H = 34;         // 타일 세로 길이
 
 let tiles = [];
-let currentTileIndex = 0;
-let pivotPlanet = 0; // 0: Red Pivot (Blue 회전), 1: Blue Pivot (Red 회전)
-let angle = 0;       // 현재 회전 각도 (라디안)
-let rotSpeed = 0.045; // 회전 속도
+let currentTileIdx = 0;
 
-let redPos = { x: 0, y: 0 };
-let bluePos = { x: 0, y: 0 };
+let pivotPos = { x: 0, y: 0 };
+let activePos = { x: 0, y: 0 };
 
+let currentAngle = 0;       // 현재 진행 각도
+let startAngle = 0;         // 이번 회전의 시작 각도
+let targetAngle = Math.PI;  // 목표 착지 각도 (항상 180도)
+let rotSpeed = 0.05;        // 회전 속도
+
+let activePlanetType = 1;   // 0: Red(불), 1: Blue(얼음) 회전 중
 let score = 0;
 let combo = 0;
 let gameStarted = false;
 
 // -------------------------------------------------------------
-// 이어지는 직사각형 경로(직교 트랙) 생성
+// 직교 타일 트랙 생성 (상/하/좌/우 연쇄 구조)
 // -------------------------------------------------------------
-function generateTiles() {
+function generateMap() {
     tiles = [];
     let cx = 150;
     let cy = 200;
     
-    // 이동 방향 벡터 (오른쪽, 아래, 오른쪽, 위 ...)
+    // 이동 방향 패턴 (0: 우, 1: 하, 2: 우, 3: 상)
     const dirs = [
         { x: 1, y: 0 }, { x: 1, y: 0 }, { x: 0, y: 1 },
         { x: 1, y: 0 }, { x: 1, y: 0 }, { x: 0, y: -1 }
@@ -128,10 +130,10 @@ function generateTiles() {
 
     tiles.push({ x: cx, y: cy });
 
-    for (let i = 0; i < 150; i++) {
+    for (let i = 0; i < 200; i++) {
         let d = dirs[i % dirs.length];
-        cx += d.x * TILE_STEP;
-        cy += d.y * TILE_STEP;
+        cx += d.x * (2 * R);
+        cy += d.y * (2 * R);
         tiles.push({ x: cx, y: cy });
     }
 
@@ -139,44 +141,52 @@ function generateTiles() {
 }
 
 function resetGame() {
-    currentTileIndex = 0;
-    pivotPlanet = 0; // Red 기준
-    redPos = { x: tiles[0].x, y: tiles[0].y };
+    currentTileIdx = 0;
+    pivotPos = { x: tiles[0].x, y: tiles[0].y };
     
-    // 다음 타일 방향으로 첫 회전각 시작 정렬
+    // 첫번째 목표 타일 방향으로 오프셋 연산
     const nextTile = tiles[1];
-    const initialAngle = Math.atan2(nextTile.y - redPos.y, nextTile.x - redPos.x);
-    angle = initialAngle - Math.PI; // 반대편에서 출발해서 목표 타일로 회전
+    const baseAngle = Math.atan2(nextTile.y - pivotPos.y, nextTile.x - pivotPos.x);
     
-    bluePos = {
-        x: redPos.x + Math.cos(angle) * R,
-        y: redPos.y + Math.sin(angle) * R
-    };
+    startAngle = baseAngle - Math.PI;
+    currentAngle = startAngle;
+    targetAngle = baseAngle;
+
+    activePlanetType = 1; // Blue 회전 시작
+    updateActivePos();
 }
 
-generateTiles();
+function updateActivePos() {
+    activePos.x = pivotPos.x + Math.cos(currentAngle) * (2 * R);
+    activePos.y = pivotPos.y + Math.sin(currentAngle) * (2 * R);
+}
+
+generateMap();
 
 // -------------------------------------------------------------
-// 프레임 업데이트
+// 프레임 루프 및 위치 계산
 // -------------------------------------------------------------
 function update() {
     if (!gameStarted) return;
 
-    angle += rotSpeed;
+    currentAngle += rotSpeed;
+    updateActivePos();
 
-    const pivot = (pivotPlanet === 0) ? redPos : bluePos;
-    const targetX = pivot.x + Math.cos(angle) * R;
-    const targetY = pivot.y + Math.sin(angle) * R;
-
-    if (pivotPlanet === 0) {
-        bluePos = { x: targetX, y: targetY };
-    } else {
-        redPos = { x: targetX, y: targetY };
+    // 입력 없이 목표 각도를 너무 지나치면 오버슈트(MISS)
+    if (currentAngle > targetAngle + 0.8) {
+        combo = 0;
+        feedbackEl.innerText = "TOO LATE!";
+        feedbackEl.style.color = "#ff5252";
+        comboEl.innerText = combo;
+        
+        // 각도 재설정 (다시 회전하도록)
+        startAngle = targetAngle;
+        targetAngle += Math.PI;
     }
 }
 
 // -------------------------------------------------------------
-// 입력 및 판정 처리
+// 판정 로직 (각도 차이 기반 정밀 판정)
 // -------------------------------------------------------------
 function handleInput() {
     if (!gameStarted) {
@@ -186,26 +196,20 @@ function handleInput() {
         return;
     }
 
-    const nextTile = tiles[currentTileIndex + 1];
-    if (!nextTile) return;
+    const diff = Math.abs(currentAngle - targetAngle);
 
-    // 회전 중인 행성 위치
-    const activePlanet = (pivotPlanet === 0) ? bluePos : redPos;
-    const dist = Math.hypot(activePlanet.x - nextTile.x, activePlanet.y - nextTile.y);
-
-    // 판정 거리 (타일 크기에 맞춰 완화)
-    if (dist < 28) {
+    if (diff < 0.25) {
         score += 100 + (combo * 10);
         combo++;
         feedbackEl.innerText = "PERFECT!";
         feedbackEl.style.color = "#00e676";
-        advanceTile(nextTile);
-    } else if (dist < 45) {
+        advanceToNextTile();
+    } else if (diff < 0.45) {
         score += 50;
         combo++;
         feedbackEl.innerText = "GREAT";
         feedbackEl.style.color = "#ffeb3b";
-        advanceTile(nextTile);
+        advanceToNextTile();
     } else {
         combo = 0;
         feedbackEl.innerText = "MISS!";
@@ -216,42 +220,36 @@ function handleInput() {
     comboEl.innerText = combo;
 }
 
-function advanceTile(nextTile) {
-    // 1. 회전 행성을 목표 타일 중심 위치에 정확히 고정
-    if (pivotPlanet === 0) {
-        bluePos = { x: nextTile.x, y: nextTile.y };
-    } else {
-        redPos = { x: nextTile.x, y: nextTile.y };
-    }
+function advanceToNextTile() {
+    currentTileIdx++;
+    const nextPivot = tiles[currentTileIdx];
+    if (!nextPivot) return;
 
-    // 2. 피벗 전환 (회전하는 공이 새 피벗이 됨)
-    pivotPlanet = (pivotPlanet === 0) ? 1 : 0;
-    currentTileIndex++;
+    // 피벗을 성공한 다음 타일 위치로 강제 고정
+    pivotPos = { x: nextPivot.x, y: nextPivot.y };
+    activePlanetType = activePlanetType === 0 ? 1 : 0;
 
-    // 3. 다가올 그 다음 타일 방향을 찾아 회전 각도 동기화
-    const futureTile = tiles[currentTileIndex + 1];
+    const futureTile = tiles[currentTileIdx + 1];
     if (futureTile) {
-        const currentPivot = (pivotPlanet === 0) ? redPos : bluePos;
-        const targetAngle = Math.atan2(futureTile.y - currentPivot.y, futureTile.x - currentPivot.x);
-        
-        // 회전하는 공이 반대편에서 타일 방향으로 오도록 180도(PI) 차감
-        angle = targetAngle - Math.PI;
+        const baseAngle = Math.atan2(futureTile.y - pivotPos.y, futureTile.x - pivotPos.x);
+        startAngle = baseAngle - Math.PI;
+        currentAngle = startAngle;
+        targetAngle = baseAngle;
     }
+    updateActivePos();
 }
 
 // -------------------------------------------------------------
-// 그래픽 그려주기 (Dark Theme)
+// Canvas 그래픽 렌더링
 // -------------------------------------------------------------
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     ctx.save();
-    const currentTile = tiles[currentTileIndex] || tiles[0];
-    
-    // 카메라 스무스 추적 (현재 타일을 화면 중앙으로)
-    ctx.translate(canvas.width / 2 - currentTile.x, canvas.height / 2 - currentTile.y);
+    // 피벗 타일을 카메라 중심에 고정
+    ctx.translate(canvas.width / 2 - pivotPos.x, canvas.height / 2 - pivotPos.y);
 
-    // 1. 경로 선
+    // 1. 경로 라인
     ctx.beginPath();
     for (let i = 0; i < tiles.length; i++) {
         if (i === 0) ctx.moveTo(tiles[i].x, tiles[i].y);
@@ -261,7 +259,7 @@ function draw() {
     ctx.lineWidth = 6;
     ctx.stroke();
 
-    // 2. 직사각형 타일
+    // 2. 직사각형 타일 렌더링
     for (let i = 0; i < tiles.length; i++) {
         const t = tiles[i];
         
@@ -271,15 +269,15 @@ function draw() {
         ctx.beginPath();
         ctx.roundRect(-TILE_W / 2, -TILE_H / 2, TILE_W, TILE_H, 6);
 
-        if (i < currentTileIndex) {
-            ctx.fillStyle = "rgba(255, 255, 255, 0.12)";
-            ctx.strokeStyle = "rgba(255, 255, 255, 0.18)";
-        } else if (i === currentTileIndex + 1) {
+        if (i < currentTileIdx) {
+            ctx.fillStyle = "rgba(255, 255, 255, 0.1)";
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
+        } else if (i === currentTileIdx + 1) {
             ctx.fillStyle = "#ffd700";
             ctx.strokeStyle = "#ffffff";
             ctx.shadowColor = "#ffd700";
             ctx.shadowBlur = 12;
-        } else if (i === currentTileIndex) {
+        } else if (i === currentTileIdx) {
             ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
             ctx.strokeStyle = "#ffffff";
         } else {
@@ -293,11 +291,15 @@ function draw() {
         ctx.restore();
     }
 
-    // 3. 두 행성 간 연결선
+    // 위치 할당 (Red/Blue 구분)
+    const redPos = activePlanetType === 1 ? pivotPos : activePos;
+    const bluePos = activePlanetType === 1 ? activePos : pivotPos;
+
+    // 3. 행성 연결 선
     ctx.beginPath();
     ctx.moveTo(redPos.x, redPos.y);
     ctx.lineTo(bluePos.x, bluePos.y);
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.6)";
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
     ctx.lineWidth = 4;
     ctx.stroke();
 
@@ -306,7 +308,7 @@ function draw() {
     ctx.arc(redPos.x, redPos.y, 14, 0, Math.PI * 2);
     ctx.fillStyle = "#ff3366";
     ctx.shadowColor = "#ff3366";
-    ctx.shadowBlur = 15;
+    ctx.shadowBlur = 14;
     ctx.fill();
 
     // 5. 얼음 행성 (Blue)
@@ -314,7 +316,7 @@ function draw() {
     ctx.arc(bluePos.x, bluePos.y, 14, 0, Math.PI * 2);
     ctx.fillStyle = "#33ccff";
     ctx.shadowColor = "#33ccff";
-    ctx.shadowBlur = 15;
+    ctx.shadowBlur = 14;
     ctx.fill();
 
     ctx.restore();
@@ -326,7 +328,7 @@ function loop() {
     requestAnimationFrame(loop);
 }
 
-// 이벤트 핸들러
+// 이벤트 바인딩
 window.addEventListener('keydown', (e) => {
     if (e.code === 'Space' || e.key !== '') {
         handleInput();
