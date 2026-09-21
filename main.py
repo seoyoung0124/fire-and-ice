@@ -33,7 +33,7 @@ st.markdown("""
 st.title("🔥 A Dance of Fire and Ice ❄️")
 st.caption("고정밀 수학적 회전 엔진 & Web Audio API 내장 웹 에디션")
 
-# 난이도 설정 (더 빠른 속도 옵션 추가)
+# 난이도 설정 (더 빠른 속도 선택지 추가)
 col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
     speed_option = st.selectbox(
@@ -43,8 +43,8 @@ with col2:
             "Normal (BPM 150)", 
             "Hard (BPM 200)", 
             "Insane (BPM 260)",
-            "🔥 Extreme (BPM 320)",
-            "⚡ Speed Demon (BPM 400)"
+            "Extreme (BPM 320)",
+            "Speed Demon (BPM 400)"
         ],
         index=1
     )
@@ -54,8 +54,8 @@ speed_map = {
     "Normal (BPM 150)": 0.055,
     "Hard (BPM 200)": 0.075,
     "Insane (BPM 260)": 0.098,
-    "🔥 Extreme (BPM 320)": 0.125,
-    "⚡ Speed Demon (BPM 400)": 0.155
+    "Extreme (BPM 320)": 0.125,
+    "Speed Demon (BPM 400)": 0.155
 }
 selected_speed = speed_map[speed_option]
 
@@ -152,7 +152,7 @@ const maxComboEl = document.getElementById('maxCombo');
 const feedbackEl = document.getElementById('feedback');
 const restartBtn = document.getElementById('restartBtn');
 
-// Web Audio API 설정
+// Web Audio API 설정 (사운드 제너레이터)
 const AudioContext = window.AudioContext || window.webkitAudioContext;
 let audioCtx = null;
 
@@ -174,15 +174,15 @@ function playSound(type) {{
 
     if (type === 'PERFECT') {{
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(523.25, now);
-        osc.frequency.exponentialRampToValueAtTime(1046.50, now + 0.12);
+        osc.frequency.setValueAtTime(523.25, now); // C5
+        osc.frequency.exponentialRampToValueAtTime(1046.50, now + 0.12); // C6
         gain.gain.setValueAtTime(0.3, now);
         gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
         osc.start(now);
         osc.stop(now + 0.12);
     }} else if (type === 'GREAT') {{
         osc.type = 'triangle';
-        osc.frequency.setValueAtTime(440, now);
+        osc.frequency.setValueAtTime(440, now); // A4
         gain.gain.setValueAtTime(0.25, now);
         gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
         osc.start(now);
@@ -224,12 +224,12 @@ let baseRotSpeed = {selected_speed};
 
 let activePlanetType = 1; // 0: 불(Red), 1: 얼음(Blue)
 
-// 고정밀 카메라 & 쉐이크 시스템
+// 고정밀 카메라 & 쉐이크 제어 변수
 let camX = 0;
 let camY = 0;
 const camLerpFactor = 0.09; 
 let shakeAmount = 0;
-let shakeDuration = 0; // 쉐이크 지속 프레임 타이머 (60FPS 기준 120 = 2초)
+let shakeDuration = 0; // 게임 오버 프레임 카운터 (60fps 기준 120프레임 = 2초)
 
 // 점수 및 판정
 let score = 0;
@@ -312,10 +312,10 @@ function initGame() {{
     maxCombo = 0;
     rotDirection = 1;
     gameState = "READY";
-    particles = [];
-    planetTrails = [];
     shakeAmount = 0;
     shakeDuration = 0;
+    particles = [];
+    planetTrails = [];
 
     pivotPos = {{ x: tiles[0].x, y: tiles[0].y }};
     camX = pivotPos.x;
@@ -344,16 +344,14 @@ function updateActivePos() {{
 }}
 
 function update() {{
+    // 게임 진행 중일 때 회전 및 트레일 갱신
     if (gameState === "PLAYING") {{
-        // 회전 계산
         currentAngle += baseRotSpeed * rotDirection;
         updateActivePos();
 
-        // 트레일 입자 추가
         const curColor = activePlanetType === 1 ? '#38bdf8' : '#ff3366';
         addTrail(activePos.x, activePos.y, curColor);
 
-        // 판정 범위 초과 오버런 (Miss)
         const passed = rotDirection === 1 
             ? (currentAngle > targetAngle + 0.65) 
             : (currentAngle < targetAngle - 0.65);
@@ -361,12 +359,20 @@ function update() {{
         if (passed) {{
             triggerGameOver("시간 초과! (MISS)");
         }}
+
+        // 플레이 중 일반 쉐이크 감쇄
+        if (shakeAmount > 0 && shakeDuration === 0) {{
+            shakeAmount *= 0.88;
+        }}
     }}
 
-    // 화면 쉐이크 2초 제어 (프레임 단위 차감)
-    if (shakeDuration > 0) {{
-        shakeDuration--;
-        if (shakeDuration <= 0) {{
+    // 게임 오버 상태일 때 2초간 화면 진동 로직
+    if (gameState === "GAMEOVER") {{
+        if (shakeDuration > 0) {{
+            shakeDuration--;
+            // 2초 동안 점진적으로 진동 세기 감소
+            shakeAmount = (shakeDuration / 120) * 10;
+        }} else {{
             shakeAmount = 0;
         }}
     }}
@@ -388,15 +394,13 @@ function handleInput() {{
     const diff = Math.abs(currentAngle - targetAngle);
 
     if (diff < 0.32) {{
-        // PERFECT
         score += 100 + (combo * 15);
         combo++;
         if (combo > maxCombo) maxCombo = combo;
         
         feedbackEl.innerText = "PERFECT!!";
         feedbackEl.style.color = "#4ade80";
-        shakeAmount = 3;
-        shakeDuration = 10;
+        shakeAmount = 4;
         
         const curColor = activePlanetType === 1 ? '#38bdf8' : '#ff3366';
         addExplosion(activePos.x, activePos.y, curColor);
@@ -404,7 +408,6 @@ function handleInput() {{
         
         advanceToNextTile();
     }} else if (diff < 0.58) {{
-        // GREAT
         score += 50;
         combo++;
         if (combo > maxCombo) maxCombo = combo;
@@ -412,12 +415,10 @@ function handleInput() {{
         feedbackEl.innerText = "GREAT";
         feedbackEl.style.color = "#facc15";
         shakeAmount = 2;
-        shakeDuration = 8;
         playSound('GREAT');
         
         advanceToNextTile();
     }} else {{
-        // MISS
         triggerGameOver("타이밍 불일치! (MISS)");
     }}
 
@@ -431,79 +432,61 @@ function triggerGameOver(reason) {{
     feedbackEl.innerText = `GAME OVER - ${{reason}}`;
     feedbackEl.style.color = "#f87171";
     
-    // 진동 강도 및 2초 제한 설정 (60FPS * 2초 = 120프레임)
-    shakeAmount = 8;
+    // 60fps 기준 120프레임 = 2초 동안 진동 설정
     shakeDuration = 120;
+    shakeAmount = 10;
     
     playSound('MISS');
     restartBtn.style.display = "inline-block";
 }}
 
-// 꺾임/대각선 타일에서도 허공 이동 없는 완벽 연속 위치 보정
 function advanceToNextTile() {{
-    // 기존에 회전하던 행성의 현재 물리적 좌표를 저장
-    const prevActiveX = activePos.x;
-    const prevActiveY = activePos.y;
-
     currentTileIdx++;
     const nextPivot = tiles[currentTileIdx];
     if (!nextPivot) return;
 
-    // Swirl 타일 확인
     if (nextPivot.isSwirl) {{
         rotDirection *= -1;
     }}
 
-    // 새 타일로 피벗(중심) 이동
     pivotPos = {{ x: nextPivot.x, y: nextPivot.y }};
     activePlanetType = activePlanetType === 0 ? 1 : 0;
 
     const futureTile = tiles[currentTileIdx + 1];
     if (futureTile) {{
-        // 새로 바뀐 피벗 타일 기준, 기존 행성의 실제 위치에 대한 정확한 각도 재연산
-        const physicalAngle = Math.atan2(prevActiveX - pivotPos.y, prevActiveX - pivotPos.x);
-        
-        // 다가올 타일의 절대 방향 연산
         let nextTargetDir = Math.atan2(futureTile.y - pivotPos.y, futureTile.x - pivotPos.x);
+        let angleOffset = currentAngle - targetAngle;
 
-        // 회전 방향에 따른 목표 각도 및 시작 각도 보정
-        let diff = nextTargetDir - physicalAngle;
+        let diff = nextTargetDir - targetAngle;
         while (diff < -Math.PI) diff += Math.PI * 2;
         while (diff > Math.PI) diff -= Math.PI * 2;
 
         if (rotDirection === 1) {{
-            targetAngle = physicalAngle + (diff < 0 ? diff + Math.PI * 2 : diff);
-            currentAngle = physicalAngle;
+            targetAngle = targetAngle + (diff < 0 ? diff + Math.PI * 2 : diff);
+            currentAngle = targetAngle - Math.PI + angleOffset;
         }} else {{
-            targetAngle = physicalAngle + (diff > 0 ? diff - Math.PI * 2 : diff);
-            currentAngle = physicalAngle;
+            targetAngle = targetAngle + (diff > 0 ? diff - Math.PI * 2 : diff);
+            currentAngle = targetAngle + Math.PI + angleOffset;
         }}
     }}
-    
-    // 끊김 없이 현재 물리 위치 연속 보장
     updateActivePos();
 }}
 
-// 캔버스 렌더링 루프
 function draw() {{
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     ctx.save();
     
-    // 카메라 추적 + 쉐이크 효과 (shakeDuration이 남았을 때만 작동)
+    // 부드러운 카메라 추적 (Lerp) + Screen Shake
     camX += (pivotPos.x - camX) * camLerpFactor;
     camY += (pivotPos.y - camY) * camLerpFactor;
 
-    let shakeX = 0;
-    let shakeY = 0;
-    if (shakeDuration > 0 && shakeAmount > 0) {{
-        shakeX = (Math.random() - 0.5) * shakeAmount;
-        shakeY = (Math.random() - 0.5) * shakeAmount;
-    }}
+    const shakeX = (Math.random() - 0.5) * shakeAmount;
+    const shakeY = (Math.random() - 0.5) * shakeAmount;
 
     ctx.translate(canvas.width / 2 - camX + shakeX, canvas.height / 2 - camY + shakeY);
 
-    // 1. 타일 연결 경로
+    // 1. 타일 연결 선
     ctx.beginPath();
     for (let i = 0; i < tiles.length; i++) {{
         if (i === 0) ctx.moveTo(tiles[i].x, tiles[i].y);
@@ -556,7 +539,7 @@ function draw() {{
         ctx.restore();
     }}
 
-    // 3. 잔상 렌더링
+    // 3. 잔상 트레일
     for (let i = planetTrails.length - 1; i >= 0; i--) {{
         const pt = planetTrails[i];
         ctx.beginPath();
@@ -574,7 +557,7 @@ function draw() {{
     const redPos = activePlanetType === 1 ? pivotPos : activePos;
     const bluePos = activePlanetType === 1 ? activePos : pivotPos;
 
-    // 4. 행성 간 연결선
+    // 4. 행성 축 연결선
     ctx.beginPath();
     ctx.moveTo(redPos.x, redPos.y);
     ctx.lineTo(bluePos.x, bluePos.y);
@@ -598,7 +581,7 @@ function draw() {{
     ctx.shadowBlur = activePlanetType === 1 ? 20 : 8;
     ctx.fill();
 
-    // 7. 파티클 폭발
+    // 7. 폭발 파티클
     for (let i = particles.length - 1; i >= 0; i--) {{
         const p = particles[i];
         ctx.beginPath();
