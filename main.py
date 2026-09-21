@@ -7,11 +7,11 @@ st.set_page_config(
     layout="centered"
 )
 
-# 스트림릿 테마 커스텀 및 가이드 스타일 정의
+# 스트림릿 테마 커스텀 및 가이드 스타일 정의 (상단 남색 -> 하단 검은색 그라데이션)
 st.markdown("""
 <style>
     .stApp {
-        background-color: #080b10;
+        background: linear-gradient(180deg, #1e1b4b 0%, #0f172a 40%, #030712 100%);
         color: #ffffff;
     }
     h1 {
@@ -24,18 +24,19 @@ st.markdown("""
     }
     .stCaption {
         text-align: center;
-        color: #8f9cae;
+        color: #94a3b8;
         font-size: 0.95rem;
         margin-bottom: 0.8rem;
     }
     .guide-container {
-        background-color: #111827;
-        border: 1px solid #1f2937;
+        background-color: rgba(15, 23, 42, 0.75);
+        border: 1px solid #334155;
         border-radius: 12px;
         padding: 12px 16px;
         margin-bottom: 12px;
         font-size: 0.88rem;
         line-height: 1.5;
+        backdrop-filter: blur(8px);
     }
     .guide-title {
         font-weight: bold;
@@ -52,10 +53,10 @@ st.markdown("""
         flex-wrap: wrap;
     }
     .tile-badge {
-        background-color: #1e293b;
+        background-color: rgba(30, 41, 59, 0.8);
         padding: 3px 8px;
         border-radius: 6px;
-        border: 1px solid #334155;
+        border: 1px solid #475569;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -124,7 +125,7 @@ game_html = f"""
         body {{
             margin: 0;
             padding: 0;
-            background-color: #080b10;
+            background: linear-gradient(180deg, #1e1b4b 0%, #0f172a 50%, #020617 100%);
             color: #ffffff;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             display: flex;
@@ -139,10 +140,10 @@ game_html = f"""
             margin-top: 5px;
         }}
         #gameCanvas {{
-            border: 2px solid #1a2332;
+            border: 2px solid #334155;
             border-radius: 20px;
-            background: radial-gradient(circle at center, #0f172a 0%, #080b10 100%);
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 20px rgba(51, 204, 255, 0.1);
+            background: linear-gradient(180deg, #0f172a 0%, #020617 100%);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9), 0 0 20px rgba(56, 189, 248, 0.15);
             cursor: pointer;
         }}
         #info {{
@@ -151,7 +152,7 @@ game_html = f"""
         }}
         .stats {{
             font-size: 19px;
-            color: #64748b;
+            color: #94a3b8;
             letter-spacing: 0.5px;
         }}
         .stats span {{
@@ -264,7 +265,7 @@ function playSound(type) {{
 const R = 46; 
 const TILE_W = 62;
 const TILE_H = 36;
-const enableSpeedTiles = {enable_speed_tiles}; // 속도 타일 모드 여부
+const enableSpeedTiles = {enable_speed_tiles};
 
 // 객체 데이터 구조
 let tiles = [];
@@ -280,7 +281,7 @@ const initialSpeedSetting = {selected_speed};
 let speedMultiplier = 1.0;
 let baseRotSpeed = initialSpeedSetting;
 
-let activePlanetType = 1; // 0: Red, 1: Blue
+let activePlanetType = 1;
 
 // 카메라 & 쉐이크 제어
 let camX = 0;
@@ -327,7 +328,6 @@ function addTrail(x, y, color) {{
     }});
 }}
 
-// 맵 생성 알고리즘 (속도 타일 모드 옵션 반영)
 function generateComplexMap() {{
     tiles = [];
     let cx = 200;
@@ -362,15 +362,14 @@ function generateComplexMap() {{
 
         specialTileCooldown--;
 
-        // 속도 타일 모드가 활성화된 경우에만 가속/감속 타일 생성
         if (enableSpeedTiles && specialTileCooldown <= 0 && !isSwirl) {{
             const rand = Math.random();
             if (rand < 0.30) {{
                 const typeRand = Math.random();
                 if (typeRand < 0.60) {{
-                    speedType = 'fast';  // 60% 확률
+                    speedType = 'fast';
                 }} else {{
-                    speedType = 'slow';  // 40% 확률
+                    speedType = 'slow';
                 }}
                 specialTileCooldown = 8;
             }}
@@ -519,12 +518,10 @@ function advanceToNextTile() {{
     const nextPivot = tiles[currentTileIdx];
     if (!nextPivot) return;
 
-    // 회전 방향 전환 (Swirl 타일)
     if (nextPivot.isSwirl) {{
         rotDirection *= -1;
     }}
 
-    // 속도 변경 및 지속 상태 적용 (속도 타일 모드일 때만 적용)
     if (enableSpeedTiles) {{
         if (nextPivot.speedType === 'fast') {{
             speedMultiplier *= 1.25;
@@ -583,7 +580,7 @@ function draw() {{
         if (i === 0) ctx.moveTo(tiles[i].x, tiles[i].y);
         else ctx.lineTo(tiles[i].x, tiles[i].y);
     }}
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.07)";
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
     ctx.lineWidth = 8;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
