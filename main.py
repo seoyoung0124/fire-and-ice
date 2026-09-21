@@ -37,7 +37,7 @@ st.caption("고정밀 수학적 회전 엔진 & Web Audio API 내장 웹 에디�
 col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
     speed_option = st.selectbox(
-        "🎮 기본 회전 속도 (BPM / 난이도)",
+        "🎮 시작 회전 속도 (BPM / 난이도)",
         options=[
             "Easy (BPM 110)", 
             "Normal (BPM 150)", 
@@ -220,8 +220,9 @@ let activePos = {{ x: 0, y: 0 }};
 let currentAngle = 0;
 let targetAngle = 0;
 let rotDirection = 1;
-const baseSpeedSetting = {selected_speed};
-let baseRotSpeed = baseSpeedSetting;
+const initialSpeedSetting = {selected_speed};
+let speedMultiplier = 1.0; // 현재 유지 중인 속도 배율
+let baseRotSpeed = initialSpeedSetting;
 
 let activePlanetType = 1; // 0: Red, 1: Blue
 
@@ -270,7 +271,7 @@ function addTrail(x, y, color) {{
     }});
 }}
 
-// 맵 생성 알고리즘 (속도 변환 타일 추가)
+// 맵 생성 알고리즘 (적절한 간격으로 특수 타일배치)
 function generateComplexMap() {{
     tiles = [];
     let cx = 200;
@@ -288,6 +289,9 @@ function generateComplexMap() {{
 
     tiles.push({{ x: cx, y: cy, isSwirl: false, speedType: 'normal' }});
     let lastDir = possibleDirs[0];
+    
+    // 특수 타일 간격 제어용 쿨다운 카운터 (초기 8타일 동안은 등장 금지)
+    let specialTileCooldown = 8; 
 
     for (let i = 0; i < 250; i++) {{
         let d;
@@ -299,16 +303,20 @@ function generateComplexMap() {{
         cx += d.x * (2 * R);
         cy += d.y * (2 * R);
         
-        const isSwirl = Math.random() < 0.1 && i > 3;
-        
-        // 타일 속도 이벤트 생성 (10% 확률로 가속, 10% 확률로 감속)
+        const isSwirl = Math.random() < 0.12 && i > 4;
         let speedType = 'normal';
-        const speedRand = Math.random();
-        if (i > 3 && !isSwirl) {{
-            if (speedRand < 0.10) {{
+
+        specialTileCooldown--;
+
+        // 쿨다운이 끝났을 때 적절한 확률로 특수 타일 생성 (최소 7개 타일 간격 보장)
+        if (specialTileCooldown <= 0 && !isSwirl) {{
+            const rand = Math.random();
+            if (rand < 0.15) {{
                 speedType = 'fast';
-            }} else if (speedRand < 0.20) {{
+                specialTileCooldown = 8; // 다음 특수 타일까지 최소 8타일 간격
+            }} else if (rand < 0.30) {{
                 speedType = 'slow';
+                specialTileCooldown = 8;
             }}
         }}
 
@@ -324,7 +332,8 @@ function initGame() {{
     combo = 0;
     maxCombo = 0;
     rotDirection = 1;
-    baseRotSpeed = baseSpeedSetting;
+    speedMultiplier = 1.0;
+    baseRotSpeed = initialSpeedSetting;
     gameState = "READY";
     shakeAmount = 0;
     shakeDuration = 0;
@@ -459,18 +468,21 @@ function advanceToNextTile() {{
         rotDirection *= -1;
     }}
 
-    // 타일 속도 변경 처리
+    // 속도 변경 및 지속 상태 적용 (최고/최저 한계선 지정)
     if (nextPivot.speedType === 'fast') {{
-        baseRotSpeed = baseSpeedSetting * 1.5;
+        speedMultiplier *= 1.3;
+        if (speedMultiplier > 2.2) speedMultiplier = 2.2; // 최대 속도 제한
         feedbackEl.innerText = "⚡ SPEED UP!!";
         feedbackEl.style.color = "#ff7733";
     }} else if (nextPivot.speedType === 'slow') {{
-        baseRotSpeed = baseSpeedSetting * 0.65;
+        speedMultiplier *= 0.75;
+        if (speedMultiplier < 0.45) speedMultiplier = 0.45; // 최저 속도 제한
         feedbackEl.innerText = "🐢 SLOW DOWN..";
         feedbackEl.style.color = "#a3e635";
-    }} else {{
-        baseRotSpeed = baseSpeedSetting;
     }}
+
+    // 현재 지속 속도 적용
+    baseRotSpeed = initialSpeedSetting * speedMultiplier;
 
     pivotPos = {{ x: nextPivot.x, y: nextPivot.y }};
     activePlanetType = activePlanetType === 0 ? 1 : 0;
@@ -542,7 +554,6 @@ function draw() {{
             ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
             ctx.strokeStyle = "#ffffff";
         }} else {{
-            // 속도별 타일 색상 지정
             if (t.speedType === 'fast') {{
                 ctx.fillStyle = "#9a3412";
                 ctx.strokeStyle = "#ff7733";
@@ -559,7 +570,7 @@ function draw() {{
         ctx.fill();
         ctx.stroke();
 
-        // 회전 반전 아이콘 (Swirl)
+        // Swirl 아이콘
         if (t.isSwirl && i >= currentTileIdx) {{
             ctx.beginPath();
             ctx.arc(0, 0, 8, 0, Math.PI * 2);
@@ -568,7 +579,7 @@ function draw() {{
             ctx.stroke();
         }}
 
-        // 속도 타일 아이콘 표시 (화살표/달팽이)
+        // 속도 변경 아이콘 (>> / <<)
         if (i >= currentTileIdx) {{
             if (t.speedType === 'fast') {{
                 ctx.fillStyle = "#ffaa00";
