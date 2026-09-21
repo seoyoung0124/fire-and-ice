@@ -33,11 +33,11 @@ st.markdown("""
 st.title("🔥 A Dance of Fire and Ice ❄️")
 st.caption("고정밀 수학적 회전 엔진 & Web Audio API 내장 웹 에디션")
 
-# 난이도 설정 (더 빠른 속도 선택지 추가)
+# 난이도 설정
 col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
     speed_option = st.selectbox(
-        "🎮 회전 속도 (BPM / 난이도)",
+        "🎮 기본 회전 속도 (BPM / 난이도)",
         options=[
             "Easy (BPM 110)", 
             "Normal (BPM 150)", 
@@ -152,7 +152,7 @@ const maxComboEl = document.getElementById('maxCombo');
 const feedbackEl = document.getElementById('feedback');
 const restartBtn = document.getElementById('restartBtn');
 
-// Web Audio API 설정 (사운드 제너레이터)
+// Web Audio API
 const AudioContext = window.AudioContext || window.webkitAudioContext;
 let audioCtx = null;
 
@@ -174,15 +174,15 @@ function playSound(type) {{
 
     if (type === 'PERFECT') {{
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(523.25, now); // C5
-        osc.frequency.exponentialRampToValueAtTime(1046.50, now + 0.12); // C6
+        osc.frequency.setValueAtTime(523.25, now);
+        osc.frequency.exponentialRampToValueAtTime(1046.50, now + 0.12);
         gain.gain.setValueAtTime(0.3, now);
         gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
         osc.start(now);
         osc.stop(now + 0.12);
     }} else if (type === 'GREAT') {{
         osc.type = 'triangle';
-        osc.frequency.setValueAtTime(440, now); // A4
+        osc.frequency.setValueAtTime(440, now);
         gain.gain.setValueAtTime(0.25, now);
         gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
         osc.start(now);
@@ -219,17 +219,18 @@ let activePos = {{ x: 0, y: 0 }};
 // 각도 및 회전 제어
 let currentAngle = 0;
 let targetAngle = 0;
-let rotDirection = 1; // 1: 시계 방향, -1: 반시계 방향
-let baseRotSpeed = {selected_speed};
+let rotDirection = 1;
+const baseSpeedSetting = {selected_speed};
+let baseRotSpeed = baseSpeedSetting;
 
-let activePlanetType = 1; // 0: 불(Red), 1: 얼음(Blue)
+let activePlanetType = 1; // 0: Red, 1: Blue
 
-// 고정밀 카메라 & 쉐이크 제어 변수
+// 카메라 & 쉐이크 제어
 let camX = 0;
 let camY = 0;
 const camLerpFactor = 0.09; 
 let shakeAmount = 0;
-let shakeDuration = 0; // 게임 오버 프레임 카운터 (60fps 기준 120프레임 = 2초)
+let shakeDuration = 0;
 
 // 점수 및 판정
 let score = 0;
@@ -237,7 +238,7 @@ let combo = 0;
 let maxCombo = 0;
 let gameState = "READY";
 
-// 그래픽 이펙트 파티클 시스템
+// 그래픽 파티클
 let particles = [];
 let planetTrails = [];
 
@@ -269,7 +270,7 @@ function addTrail(x, y, color) {{
     }});
 }}
 
-// 맵 생성 알고리즘
+// 맵 생성 알고리즘 (속도 변환 타일 추가)
 function generateComplexMap() {{
     tiles = [];
     let cx = 200;
@@ -285,7 +286,7 @@ function generateComplexMap() {{
         {{ x: 1, y: -1 }}
     ];
 
-    tiles.push({{ x: cx, y: cy, isSwirl: false }});
+    tiles.push({{ x: cx, y: cy, isSwirl: false, speedType: 'normal' }});
     let lastDir = possibleDirs[0];
 
     for (let i = 0; i < 250; i++) {{
@@ -298,8 +299,20 @@ function generateComplexMap() {{
         cx += d.x * (2 * R);
         cy += d.y * (2 * R);
         
-        const isSwirl = Math.random() < 0.12 && i > 3;
-        tiles.push({{ x: cx, y: cy, isSwirl: isSwirl }});
+        const isSwirl = Math.random() < 0.1 && i > 3;
+        
+        // 타일 속도 이벤트 생성 (10% 확률로 가속, 10% 확률로 감속)
+        let speedType = 'normal';
+        const speedRand = Math.random();
+        if (i > 3 && !isSwirl) {{
+            if (speedRand < 0.10) {{
+                speedType = 'fast';
+            }} else if (speedRand < 0.20) {{
+                speedType = 'slow';
+            }}
+        }}
+
+        tiles.push({{ x: cx, y: cy, isSwirl: isSwirl, speedType: speedType }});
     }}
 }}
 
@@ -311,6 +324,7 @@ function initGame() {{
     combo = 0;
     maxCombo = 0;
     rotDirection = 1;
+    baseRotSpeed = baseSpeedSetting;
     gameState = "READY";
     shakeAmount = 0;
     shakeDuration = 0;
@@ -344,7 +358,6 @@ function updateActivePos() {{
 }}
 
 function update() {{
-    // 게임 진행 중일 때 회전 및 트레일 갱신
     if (gameState === "PLAYING") {{
         currentAngle += baseRotSpeed * rotDirection;
         updateActivePos();
@@ -360,17 +373,14 @@ function update() {{
             triggerGameOver("시간 초과! (MISS)");
         }}
 
-        // 플레이 중 일반 쉐이크 감쇄
         if (shakeAmount > 0 && shakeDuration === 0) {{
             shakeAmount *= 0.88;
         }}
     }}
 
-    // 게임 오버 상태일 때 2초간 화면 진동 로직
     if (gameState === "GAMEOVER") {{
         if (shakeDuration > 0) {{
             shakeDuration--;
-            // 2초 동안 점진적으로 진동 세기 감소
             shakeAmount = (shakeDuration / 120) * 10;
         }} else {{
             shakeAmount = 0;
@@ -432,7 +442,6 @@ function triggerGameOver(reason) {{
     feedbackEl.innerText = `GAME OVER - ${{reason}}`;
     feedbackEl.style.color = "#f87171";
     
-    // 60fps 기준 120프레임 = 2초 동안 진동 설정
     shakeDuration = 120;
     shakeAmount = 10;
     
@@ -445,8 +454,22 @@ function advanceToNextTile() {{
     const nextPivot = tiles[currentTileIdx];
     if (!nextPivot) return;
 
+    // 회전 방향 전환 (Swirl 타일)
     if (nextPivot.isSwirl) {{
         rotDirection *= -1;
+    }}
+
+    // 타일 속도 변경 처리
+    if (nextPivot.speedType === 'fast') {{
+        baseRotSpeed = baseSpeedSetting * 1.5;
+        feedbackEl.innerText = "⚡ SPEED UP!!";
+        feedbackEl.style.color = "#ff7733";
+    }} else if (nextPivot.speedType === 'slow') {{
+        baseRotSpeed = baseSpeedSetting * 0.65;
+        feedbackEl.innerText = "🐢 SLOW DOWN..";
+        feedbackEl.style.color = "#a3e635";
+    }} else {{
+        baseRotSpeed = baseSpeedSetting;
     }}
 
     pivotPos = {{ x: nextPivot.x, y: nextPivot.y }};
@@ -477,7 +500,6 @@ function draw() {{
 
     ctx.save();
     
-    // 부드러운 카메라 추적 (Lerp) + Screen Shake
     camX += (pivotPos.x - camX) * camLerpFactor;
     camY += (pivotPos.y - camY) * camLerpFactor;
 
@@ -498,7 +520,7 @@ function draw() {{
     ctx.lineJoin = "round";
     ctx.stroke();
 
-    // 2. 직사각형 타일
+    // 2. 직사각형 타일 렌더링
     for (let i = 0; i < tiles.length; i++) {{
         const t = tiles[i];
         
@@ -520,20 +542,47 @@ function draw() {{
             ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
             ctx.strokeStyle = "#ffffff";
         }} else {{
-            ctx.fillStyle = "#1e293b";
-            ctx.strokeStyle = "#334155";
+            // 속도별 타일 색상 지정
+            if (t.speedType === 'fast') {{
+                ctx.fillStyle = "#9a3412";
+                ctx.strokeStyle = "#ff7733";
+            }} else if (t.speedType === 'slow') {{
+                ctx.fillStyle = "#3f6212";
+                ctx.strokeStyle = "#a3e635";
+            }} else {{
+                ctx.fillStyle = "#1e293b";
+                ctx.strokeStyle = "#334155";
+            }}
         }}
 
         ctx.lineWidth = 2;
         ctx.fill();
         ctx.stroke();
 
+        // 회전 반전 아이콘 (Swirl)
         if (t.isSwirl && i >= currentTileIdx) {{
             ctx.beginPath();
             ctx.arc(0, 0, 8, 0, Math.PI * 2);
             ctx.strokeStyle = "#c084fc";
             ctx.lineWidth = 3;
             ctx.stroke();
+        }}
+
+        // 속도 타일 아이콘 표시 (화살표/달팽이)
+        if (i >= currentTileIdx) {{
+            if (t.speedType === 'fast') {{
+                ctx.fillStyle = "#ffaa00";
+                ctx.font = "bold 14px sans-serif";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText(">>", 0, 0);
+            }} else if (t.speedType === 'slow') {{
+                ctx.fillStyle = "#bef264";
+                ctx.font = "bold 14px sans-serif";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText("<<", 0, 0);
+            }}
         }}
 
         ctx.restore();
