@@ -2,7 +2,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 st.set_page_config(
-    page_title="A Dance of Fire and Ice - Streamlit Edition",
+    page_title="A Dance of Fire and Ice - Smooth Edition",
     page_icon="❄️",
     layout="centered"
 )
@@ -29,6 +29,7 @@ st.markdown("""
 st.title("🔥 A Dance of Fire and Ice ❄️")
 st.caption("박자에 맞춰 타일 위로 행성을 착지시키세요!")
 
+# 속도 설정
 col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
     speed_option = st.selectbox(
@@ -136,22 +137,22 @@ let currentTileIdx = 0;
 let pivotPos = {{ x: 0, y: 0 }};
 let activePos = {{ x: 0, y: 0 }};
 
-// 부드러운 카메라 추적
 let camX = 0;
 let camY = 0;
-const camLerpFactor = 0.1; 
+const camLerpFactor = 0.08; 
 
 let currentAngle = 0;
 let targetAngle = 0;
 let baseRotSpeed = {selected_speed};
 
-let activePlanetType = 1;
+let activePlanetType = 1; 
 let score = 0;
 let combo = 0;
 let maxCombo = 0;
 
 let gameState = "READY";
 
+// 랜덤 맵 생성
 function generateRandomMap() {{
     tiles = [];
     let cx = 150;
@@ -194,10 +195,10 @@ function initGame() {{
     camY = pivotPos.y;
     
     const nextTile = tiles[1];
-    let targetDirAngle = Math.atan2(nextTile.y - pivotPos.y, nextTile.x - pivotPos.x);
+    let initialDirAngle = Math.atan2(nextTile.y - pivotPos.y, nextTile.x - pivotPos.x);
     
-    currentAngle = targetDirAngle - Math.PI;
-    targetAngle = targetDirAngle;
+    currentAngle = initialDirAngle - Math.PI;
+    targetAngle = initialDirAngle;
 
     activePlanetType = 1;
     updateActivePos();
@@ -217,11 +218,10 @@ function updateActivePos() {{
 function update() {{
     if (gameState !== "PLAYING") return;
 
-    // 시계 방향으로 일정하게 회전
     currentAngle += baseRotSpeed;
     updateActivePos();
 
-    if (currentAngle > targetAngle + 0.6) {{
+    if (currentAngle > targetAngle + 0.5) {{
         triggerGameOver("시간 초과! (Miss)");
     }}
 }}
@@ -238,14 +238,14 @@ function handleInput() {{
 
     const diff = Math.abs(currentAngle - targetAngle);
 
-    if (diff < 0.38) {{
+    if (diff < 0.35) {{
         score += 100 + (combo * 10);
         combo++;
         if (combo > maxCombo) maxCombo = combo;
         feedbackEl.innerText = "PERFECT!";
         feedbackEl.style.color = "#00e676";
         advanceToNextTile();
-    }} else if (diff < 0.65) {{
+    }} else if (diff < 0.60) {{
         score += 50;
         combo++;
         if (combo > maxCombo) maxCombo = combo;
@@ -267,30 +267,33 @@ function triggerGameOver(reason) {{
     restartBtn.style.display = "inline-block";
 }}
 
+// 연속성 보정 핵심 함수
 function advanceToNextTile() {{
     currentTileIdx++;
     const nextPivot = tiles[currentTileIdx];
     if (!nextPivot) return;
 
-    // 새로운 Pivot으로 전환
+    // 1. 착지한 타일 위치로 중심 정렬
     pivotPos = {{ x: nextPivot.x, y: nextPivot.y }};
     activePlanetType = activePlanetType === 0 ? 1 : 0;
 
     const futureTile = tiles[currentTileIdx + 1];
     if (futureTile) {{
-        // 새로운 목표 타일과의 상대 각도 연산
+        // 2. Pivot 기준으로 다음 타일이 위치한 절대 방향 각도
         let nextTargetDirAngle = Math.atan2(futureTile.y - pivotPos.y, futureTile.x - pivotPos.x);
 
-        // 이전 회전 각도의 연속성을 위해 오프셋을 유지
-        let sweepNeeded = nextTargetDirAngle - (currentAngle - Math.PI);
+        // 3. 현재 회전 각도에서 연속적으로 넘어갈 수 있도록 목표 각도 계산
+        let currentAbs = currentAngle;
+        let diff = nextTargetDirAngle - currentAbs;
 
-        // 시계 방향 최소 회전각 조정 (각도가 뒤로 튀는 현상 방지)
-        while (sweepNeeded <= 0) {{
-            sweepNeeded += Math.PI * 2;
+        // 시계 방향 회전을 보장하기 위한 2π 연산
+        while (diff <= 0) {{
+            diff += Math.PI * 2;
         }}
 
-        targetAngle = currentAngle + sweepNeeded;
+        targetAngle = currentAngle + diff;
     }}
+    
     updateActivePos();
 }}
 
@@ -299,16 +302,16 @@ function draw() {{
 
     ctx.save();
     
-    // 두 중심점 사이를 선형 보간하여 화면 튀는 현상 방지
+    // 카메라 위치 보간 (두 행성의 중앙을 매끄럽게 추적)
     const targetCamX = (pivotPos.x + activePos.x) / 2;
     const targetCamY = (pivotPos.y + activePos.y) / 2;
 
     camX += (targetCamX - camX) * camLerpFactor;
     camY += (targetCamY - camY) * camLerpFactor;
 
-    ctx.translate(Math.round(canvas.width / 2 - camX), Math.round(canvas.height / 2 - camY));
+    ctx.translate(canvas.width / 2 - camX, canvas.height / 2 - camY);
 
-    // 1. 타일 연결 선
+    // 1. 경로선
     ctx.beginPath();
     for (let i = 0; i < tiles.length; i++) {{
         if (i === 0) ctx.moveTo(tiles[i].x, tiles[i].y);
@@ -318,7 +321,7 @@ function draw() {{
     ctx.lineWidth = 6;
     ctx.stroke();
 
-    // 2. 타일 그리기
+    // 2. 타일
     for (let i = 0; i < tiles.length; i++) {{
         const t = tiles[i];
         
@@ -353,7 +356,7 @@ function draw() {{
     const redPos = activePlanetType === 1 ? pivotPos : activePos;
     const bluePos = activePlanetType === 1 ? activePos : pivotPos;
 
-    // 3. 행성 간 연결선
+    // 3. 연결선
     ctx.beginPath();
     ctx.moveTo(redPos.x, redPos.y);
     ctx.lineTo(bluePos.x, bluePos.y);
