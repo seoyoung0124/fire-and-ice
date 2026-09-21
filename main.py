@@ -7,7 +7,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# 스트림릿 테마 커스텀
+# 스트림릿 테마 커스텀 및 가이드 스타일 정의
 st.markdown("""
 <style>
     .stApp {
@@ -26,12 +26,56 @@ st.markdown("""
         text-align: center;
         color: #8f9cae;
         font-size: 0.95rem;
+        margin-bottom: 0.8rem;
+    }
+    .guide-container {
+        background-color: #111827;
+        border: 1px solid #1f2937;
+        border-radius: 12px;
+        padding: 12px 16px;
+        margin-bottom: 12px;
+        font-size: 0.88rem;
+        line-height: 1.5;
+    }
+    .guide-title {
+        font-weight: bold;
+        color: #38bdf8;
+        margin-bottom: 4px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .guide-tiles {
+        display: flex;
+        gap: 12px;
+        margin-top: 6px;
+        flex-wrap: wrap;
+    }
+    .tile-badge {
+        background-color: #1e293b;
+        padding: 3px 8px;
+        border-radius: 6px;
+        border: 1px solid #334155;
     }
 </style>
 """, unsafe_allow_html=True)
 
 st.title("🔥 A Dance of Fire and Ice ❄️")
 st.caption("고정밀 수학적 회전 엔진 & Web Audio API 내장 웹 에디션")
+
+# 게임 설명 가이드 상자 추가
+st.markdown("""
+<div class="guide-container">
+    <div class="guide-title">🎮 게임 이용 안내</div>
+    <div>• <b>조작 방법:</b> 행성이 다음 타일에 겹치는 순간 <b>화면을 클릭</b>하거나 <b>스페이스바/아무 키</b>를 누르세요.</div>
+    <div>• <b>특수 타일 안내:</b></div>
+    <div class="guide-tiles">
+        <span class="tile-badge"><b style="color: #ff7733;">🚀 >></b> 가속 (속도 증가 & 유지)</span>
+        <span class="tile-badge"><b style="color: #a3e635;">🐢 <<</b> 감속 (속도 감소 & 유지)</span>
+        <span class="tile-badge"><b style="color: #c084fc;">🌀 ○</b> 회전 방향 반전</span>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
 # 난이도 설정
 col1, col2, col3 = st.columns([1, 2, 1])
@@ -81,7 +125,7 @@ game_html = f"""
         }}
         #gameContainer {{
             position: relative;
-            margin-top: 10px;
+            margin-top: 5px;
         }}
         #gameCanvas {{
             border: 2px solid #1a2332;
@@ -91,7 +135,7 @@ game_html = f"""
             cursor: pointer;
         }}
         #info {{
-            margin-top: 15px;
+            margin-top: 12px;
             text-align: center;
         }}
         .stats {{
@@ -133,7 +177,7 @@ game_html = f"""
 <body>
 
 <div id="gameContainer">
-    <canvas id="gameCanvas" width="680" height="400"></canvas>
+    <canvas id="gameCanvas" width="680" height="390"></canvas>
 </div>
 
 <div id="info">
@@ -221,7 +265,7 @@ let currentAngle = 0;
 let targetAngle = 0;
 let rotDirection = 1;
 const initialSpeedSetting = {selected_speed};
-let speedMultiplier = 1.0; // 현재 유지 중인 속도 배율
+let speedMultiplier = 1.0;
 let baseRotSpeed = initialSpeedSetting;
 
 let activePlanetType = 1; // 0: Red, 1: Blue
@@ -271,7 +315,7 @@ function addTrail(x, y, color) {{
     }});
 }}
 
-// 맵 생성 알고리즘 (적절한 간격으로 특수 타일배치)
+// 맵 생성 알고리즘
 function generateComplexMap() {{
     tiles = [];
     let cx = 200;
@@ -289,8 +333,6 @@ function generateComplexMap() {{
 
     tiles.push({{ x: cx, y: cy, isSwirl: false, speedType: 'normal' }});
     let lastDir = possibleDirs[0];
-    
-    // 특수 타일 간격 제어용 쿨다운 카운터 (초기 8타일 동안은 등장 금지)
     let specialTileCooldown = 8; 
 
     for (let i = 0; i < 250; i++) {{
@@ -308,14 +350,15 @@ function generateComplexMap() {{
 
         specialTileCooldown--;
 
-        // 쿨다운이 끝났을 때 적절한 확률로 특수 타일 생성 (최소 7개 타일 간격 보장)
         if (specialTileCooldown <= 0 && !isSwirl) {{
             const rand = Math.random();
-            if (rand < 0.15) {{
-                speedType = 'fast';
-                specialTileCooldown = 8; // 다음 특수 타일까지 최소 8타일 간격
-            }} else if (rand < 0.30) {{
-                speedType = 'slow';
+            if (rand < 0.30) {{
+                const typeRand = Math.random();
+                if (typeRand < 0.60) {{
+                    speedType = 'fast';  // 60% 확률
+                }} else {{
+                    speedType = 'slow';  // 40% 확률
+                }}
                 specialTileCooldown = 8;
             }}
         }}
@@ -468,20 +511,19 @@ function advanceToNextTile() {{
         rotDirection *= -1;
     }}
 
-    // 속도 변경 및 지속 상태 적용 (최고/최저 한계선 지정)
+    // 속도 변경 및 지속 상태 적용
     if (nextPivot.speedType === 'fast') {{
-        speedMultiplier *= 1.3;
-        if (speedMultiplier > 2.2) speedMultiplier = 2.2; // 최대 속도 제한
+        speedMultiplier *= 1.25;
+        if (speedMultiplier > 2.2) speedMultiplier = 2.2;
         feedbackEl.innerText = "⚡ SPEED UP!!";
         feedbackEl.style.color = "#ff7733";
     }} else if (nextPivot.speedType === 'slow') {{
-        speedMultiplier *= 0.75;
-        if (speedMultiplier < 0.45) speedMultiplier = 0.45; // 최저 속도 제한
+        speedMultiplier *= 0.8;
+        if (speedMultiplier < 0.45) speedMultiplier = 0.45;
         feedbackEl.innerText = "🐢 SLOW DOWN..";
         feedbackEl.style.color = "#a3e635";
     }}
 
-    // 현재 지속 속도 적용
     baseRotSpeed = initialSpeedSetting * speedMultiplier;
 
     pivotPos = {{ x: nextPivot.x, y: nextPivot.y }};
@@ -579,7 +621,7 @@ function draw() {{
             ctx.stroke();
         }}
 
-        // 속도 변경 아이콘 (>> / <<)
+        // 속도 변경 아이콘
         if (i >= currentTileIdx) {{
             if (t.speedType === 'fast') {{
                 ctx.fillStyle = "#ffaa00";
