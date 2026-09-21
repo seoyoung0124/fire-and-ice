@@ -1,432 +1,213 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-# Configure page settings
 st.set_page_config(
     page_title="A Dance of Fire and Ice - Streamlit Edition",
     page_icon="❄️",
-    layout="centered",
-    initial_sidebar_state="collapsed"
+    layout="centered"
 )
 
+# 스트림릿 페이지 스타일 (어두운 테마)
 st.markdown("""
-    <style>
-        /* Dark theme override for Streamlit wrapper */
-        .stApp {
-            background-color: #0b0d14;
-            color: #f0f2f8;
-        }
-        .main .block-container {
-            padding-top: 2rem;
-            padding-bottom: 2rem;
-            max-width: 800px;
-        }
-        h1 {
-            background: linear-gradient(135deg, #ff3366 0%, #ff9900 50%, #33ccff 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            font-weight: 800 !important;
-            text-align: center;
-            margin-bottom: 0.2rem !important;
-        }
-        .subtitle {
-            text-align: center;
-            color: #8a93b0;
-            font-size: 0.95rem;
-            margin-bottom: 1.5rem;
-        }
-    </style>
+<style>
+    .stApp {
+        background-color: #0b0e14;
+        color: #f0f2f5;
+    }
+    h1 {
+        text-align: center;
+        color: #ffffff;
+        font-weight: 700;
+        margin-bottom: 0.2rem;
+    }
+    .stCaption {
+        text-align: center;
+        color: #9aa0a6;
+    }
+</style>
 """, unsafe_allow_html=True)
 
-st.markdown("<h1>A DANCE OF FIRE AND ICE</h1>", unsafe_allow_html=True)
-st.markdown("<div class='subtitle'>🔥 얼음과 불의 춤 — Streamlit Cloud 웹 에디션 ❄️</div>", unsafe_allow_html=True)
+st.title("🔥 A Dance of Fire and Ice ❄️")
+st.caption("스트림릿 클라우드용 '얼음과 불의 춤' 미니 게임입니다.")
 
+# 게임 HTML/JS 엔진
 game_html = """
 <!DOCTYPE html>
-<html lang="ko">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>A Dance of Fire and Ice</title>
+    <meta charset="utf-8">
     <style>
         * {
             box-sizing: border-box;
-            margin: 0;
-            padding: 0;
         }
         body {
-            background-color: #0b0d14;
-            color: #e2e8f0;
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #0b0e14;
+            color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            min-height: 100vh;
-            overflow: hidden;
             user-select: none;
-            -webkit-user-select: none;
-        }
-        #game-container {
-            position: relative;
-            width: 100%;
-            max-width: 680px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        #canvas-wrapper {
-            position: relative;
-            width: 100%;
-            border-radius: 16px;
             overflow: hidden;
-            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.7), 0 0 20px rgba(51, 204, 255, 0.15);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            background: #111420;
         }
-        canvas {
-            display: block;
-            width: 100%;
-            height: 420px;
+        #gameCanvas {
+            border: 2px solid #1f293d;
+            border-radius: 16px;
+            background-color: #121824;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
             cursor: pointer;
         }
-        .ui-panel {
-            width: 100%;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 14px;
-            padding: 12px 20px;
-            background: rgba(17, 20, 32, 0.8);
-            border-radius: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.06);
-            backdrop-filter: blur(10px);
-        }
-        .stat-box {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        .stat-label {
-            font-size: 0.75rem;
-            color: #64748b;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 2px;
-        }
-        .stat-value {
-            font-size: 1.4rem;
-            font-weight: 700;
-            color: #f8fafc;
-            font-family: 'Courier New', monospace;
-        }
-        #feedback-display {
-            font-size: 1.25rem;
-            font-weight: 800;
-            letter-spacing: 1.5px;
-            height: 28px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-shadow: 0 0 12px currentColor;
-            transition: transform 0.1s ease;
-        }
-        .controls-hint {
-            margin-top: 12px;
-            font-size: 0.85rem;
-            color: #64748b;
+        #info {
+            margin-top: 15px;
             text-align: center;
         }
-        .controls-hint kbd {
-            background: #1e2338;
-            color: #33ccff;
-            padding: 3px 8px;
-            border-radius: 4px;
-            border: 1px solid rgba(51, 204, 255, 0.3);
-            font-family: inherit;
-            font-weight: 600;
+        .stats {
+            font-size: 18px;
+            color: #8a99ad;
+            letter-spacing: 1px;
         }
-        #restart-btn {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            padding: 14px 28px;
-            font-size: 1.1rem;
-            font-weight: 700;
+        .stats span {
             color: #ffffff;
-            background: linear-gradient(135deg, #ff3366, #ff9900);
-            border: none;
-            border-radius: 30px;
-            box-shadow: 0 0 20px rgba(255, 51, 102, 0.5);
-            cursor: pointer;
-            display: none;
-            z-index: 10;
-            transition: transform 0.2s, box-shadow 0.2s;
+            font-weight: bold;
         }
-        #restart-btn:hover {
-            transform: translate(-50%, -50%) scale(1.05);
-            box-shadow: 0 0 30px rgba(255, 51, 102, 0.8);
+        .status {
+            font-size: 22px;
+            font-weight: 800;
+            margin-top: 8px;
+            height: 30px;
+            letter-spacing: 1px;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
         }
     </style>
 </head>
 <body>
 
-<div id="game-container">
-    <div id="canvas-wrapper">
-        <canvas id="gameCanvas" width="680" height="420"></canvas>
-        <button id="restart-btn" onclick="resetGame()">다시 시작 (Restart)</button>
-    </div>
-
-    <div class="ui-panel">
-        <div class="stat-box">
-            <span class="stat-label">Score</span>
-            <span id="score" class="stat-value">0</span>
-        </div>
-        
-        <div id="feedback-display" style="color: #33ccff;">PRESS SPACE TO START</div>
-        
-        <div class="stat-box">
-            <span class="stat-label">Combo</span>
-            <span id="combo" class="stat-value">0</span>
-        </div>
-    </div>
-
-    <div class="controls-hint">
-        조작법: <kbd>SPACE</kbd> 키 또는 <kbd>화면 클릭</kbd>으로 타이밍에 맞춰 타일을 딛으세요!
-    </div>
+<canvas id="gameCanvas" width="650" height="420"></canvas>
+<div id="info">
+    <div class="stats">점수: <span id="score">0</span> | 콤보: <span id="combo">0</span></div>
+    <div id="feedback" class="status" style="color: #64b5f6;">클릭하거나 아무 키나 눌러 시작하세요!</div>
 </div>
 
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-
 const scoreEl = document.getElementById('score');
 const comboEl = document.getElementById('combo');
-const feedbackEl = document.getElementById('feedback-display');
-const restartBtn = document.getElementById('restart-btn');
+const feedbackEl = document.getElementById('feedback');
 
-// Game Engine Constants
-// Key logic: ORBIT_RADIUS MUST EQUAL TILE_SPACING for 180 deg rotation alignment!
-const TILE_SIZE = 44;          // Tile visual size (Square)
-const TILE_SPACING = 60;       // Center-to-center distance between consecutive tiles
-const ORBIT_RADIUS = 60;       // Exact radius equal to TILE_SPACING
-const ROTATION_SPEED = 0.055;  // Speed of orbital rotation (radians per frame)
-
-// Directions for Rectangular path construction (0: Right, 1: Down, 2: Left, 3: Up)
-const DIR_VECTORS = [
-    { x: 1, y: 0, angle: 0 },              // Right (0 radians)
-    { x: 0, y: 1, angle: Math.PI / 2 },    // Down (PI/2 radians)
-    { x: -1, y: 0, angle: Math.PI },       // Left (PI radians)
-    { x: 0, y: -1, angle: -Math.PI / 2 }   // Up (-PI/2 radians)
-];
+// -------------------------------------------------------------
+// 핵심 게임 수치 및 기하학 설정
+// -------------------------------------------------------------
+const R = 45;              // 행성 회전 반지름 (Orbit Radius)
+const TILE_STEP = 2 * R;   // 타일 간격 (정확히 2R = 90px)
+const TILE_W = 56;         // 직사각형 타일 가로
+const TILE_H = 32;         // 직사각형 타일 세로
+const rotationSpeed = 0.052; // 회전 속도
 
 let tiles = [];
 let currentTileIndex = 0;
-let angle = 0;             // Orbital angle relative to current track direction
-let pivotPlanet = 0;       // 0: Fire (Red) is pivot, Ice (Blue) rotates; 1: Ice is pivot, Fire rotates
-let isClockwise = true;    // Orbit rotation direction
-let cameraPos = { x: 0, y: 0 };
+let angle = 0;
+let pivotPlanet = 0; // 0: Red Pivot (Blue 회전), 1: Blue Pivot (Red 회전)
 
 let redPos = { x: 0, y: 0 };
 let bluePos = { x: 0, y: 0 };
 
 let score = 0;
 let combo = 0;
-let maxCombo = 0;
-let gameState = 'START';   // 'START', 'PLAYING', 'GAMEOVER', 'CLEAR'
-let particles = [];
+let gameStarted = false;
 
-function generateRectangularTrack() {
+// -------------------------------------------------------------
+// 직사각형 타일 경로 생성 (이어지는 직사각형 구조)
+// -------------------------------------------------------------
+function generateTiles() {
     tiles = [];
-    let curX = 100;
-    let curY = 210;
-
-    // First tile
-    tiles.push({
-        x: curX,
-        y: curY,
-        dirIndex: 0, // Initial direction: Right
-        entryAngle: 0
-    });
-
-    // Rectangular sequence pattern (Right, Down, Right, Up, Right, etc.)
-    const pattern = [
-        0, 0, 0, 1, 1, 0, 0, 3, 3, 0, 0, 1, 1, 2, 2, 1, 1, 0, 0, 0, 3, 3, 0, 0, 1, 1, 0, 0, 3, 3, 0, 0, 0
+    let cx = 120;
+    let cy = 210;
+    
+    // 격자 방향 벡터 (우, 하, 좌, 상)
+    const dirs = [
+        { x: 1, y: 0 },
+        { x: 0, y: 1 },
+        { x: -1, y: 0 },
+        { x: 0, y: -1 }
     ];
 
-    let currentDir = 0;
-
-    for (let i = 0; i < pattern.length; i++) {
-        currentDir = pattern[i];
-        const vec = DIR_VECTORS[currentDir];
-        
-        curX += vec.x * TILE_SPACING;
-        curY += vec.y * TILE_SPACING;
-
-        tiles.push({
-            x: curX,
-            y: curY,
-            dirIndex: currentDir,
-            entryAngle: vec.angle
-        });
-    }
-
-    // Add extra straight buffer tiles at the end
-    for (let i = 0; i < 10; i++) {
-        curX += DIR_VECTORS[0].x * TILE_SPACING;
-        curY += DIR_VECTORS[0].y * TILE_SPACING;
-        tiles.push({
-            x: curX,
-            y: curY,
-            dirIndex: 0,
-            entryAngle: 0
-        });
-    }
-}
-
-function initGame() {
-    generateRectangularTrack();
-    currentTileIndex = 0;
-    pivotPlanet = 0; // Red is initial pivot
+    // 직사각형 회로 패턴 (오른쪽 3칸, 아래 2칸, 오른쪽 3칸, 위 2칸 ...)
+    const pattern = [0, 0, 0, 1, 1, 0, 0, 0, 3, 3];
     
-    // Set initial pivot planet position on first tile
+    tiles.push({ x: cx, y: cy });
+
+    for (let i = 0; i < 120; i++) {
+        let dirIdx = pattern[i % pattern.length];
+        let d = dirs[dirIdx];
+        cx += d.x * TILE_STEP;
+        cy += d.y * TILE_STEP;
+        tiles.push({ x: cx, y: cy });
+    }
+
+    // 초기 행성 위치 배치 (첫 타일 중심에 Red, 오른쪽 R 거리 위치에 Blue)
     redPos = { x: tiles[0].x, y: tiles[0].y };
-    
-    // Position rotating planet (Blue) relative to initial tile direction (Right)
-    const targetDir = tiles[0].dirIndex;
-    const baseAngle = DIR_VECTORS[targetDir].angle;
-    
-    // Start rotating planet opposite to movement direction (180 deg / PI radians out)
-    angle = baseAngle + Math.PI;
-    bluePos = {
-        x: redPos.x + Math.cos(angle) * ORBIT_RADIUS,
-        y: redPos.y + Math.sin(angle) * ORBIT_RADIUS
-    };
-
-    cameraPos = { x: tiles[0].x, y: tiles[0].y };
-    score = 0;
-    combo = 0;
-    maxCombo = 0;
-    gameState = 'START';
-    particles = [];
-
-    scoreEl.innerText = score;
-    comboEl.innerText = combo;
-    feedbackEl.innerText = "PRESS SPACE TO START";
-    feedbackEl.style.color = "#33ccff";
-    restartBtn.style.display = "none";
+    bluePos = { x: tiles[0].x + R, y: tiles[0].y };
+    angle = 0;
 }
 
-function createExplosion(x, y, color) {
-    for (let i = 0; i < 16; i++) {
-        const pAngle = Math.random() * Math.PI * 2;
-        const speed = 2 + Math.random() * 5;
-        particles.push({
-            x: x,
-            y: y,
-            vx: Math.cos(pAngle) * speed,
-            vy: Math.sin(pAngle) * speed,
-            life: 1.0,
-            color: color,
-            size: 3 + Math.random() * 4
-        });
-    }
-}
+generateTiles();
 
-function updateParticles() {
-    for (let i = particles.length - 1; i >= 0; i--) {
-        let p = particles[i];
-        p.x += p.vx;
-        p.y += p.vy;
-        p.life -= 0.03;
-        if (p.life <= 0) {
-            particles.splice(i, 1);
-        }
-    }
-}
-
+// -------------------------------------------------------------
+// 프레임 업데이트
+// -------------------------------------------------------------
 function update() {
-    if (gameState !== 'PLAYING') return;
+    if (!gameStarted) return;
 
-    // Increment rotation angle
-    angle += ROTATION_SPEED;
+    angle += rotationSpeed;
 
-    // Calculate orbiting planet position around current pivot
-    const pivot = pivotPlanet === 0 ? redPos : bluePos;
-    const currentOrbiterPos = {
-        x: pivot.x + Math.cos(angle) * ORBIT_RADIUS,
-        y: pivot.y + Math.sin(angle) * ORBIT_RADIUS
-    };
+    const pivot = (pivotPlanet === 0) ? redPos : bluePos;
+    const targetX = pivot.x + Math.cos(angle) * R;
+    const targetY = pivot.y + Math.sin(angle) * R;
 
     if (pivotPlanet === 0) {
-        bluePos = currentOrbiterPos;
+        bluePos = { x: targetX, y: targetY };
     } else {
-        redPos = currentOrbiterPos;
-    }
-
-    // Smooth camera tracking to current tile
-    const currentTile = tiles[currentTileIndex];
-    if (currentTile) {
-        cameraPos.x += (currentTile.x - cameraPos.x) * 0.1;
-        cameraPos.y += (currentTile.y - cameraPos.y) * 0.1;
-    }
-
-    // Automatic miss condition if rotated too far past the target tile (passed by over ~90 degrees)
-    const nextTile = tiles[currentTileIndex + 1];
-    if (nextTile) {
-        const orbiter = pivotPlanet === 0 ? bluePos : redPos;
-        const dist = Math.hypot(orbiter.x - nextTile.x, orbiter.y - nextTile.y);
-        
-        // If orbiter moves away after passing close enough
-        if (dist > ORBIT_RADIUS * 1.8 && angle > Math.PI * 2.5) {
-            triggerMiss("TOO LATE!");
-        }
+        redPos = { x: targetX, y: targetY };
     }
 }
 
+// -------------------------------------------------------------
+// 판정 및 입력 처리
+// -------------------------------------------------------------
 function handleInput() {
-    if (gameState === 'START') {
-        gameState = 'PLAYING';
+    if (!gameStarted) {
+        gameStarted = true;
         feedbackEl.innerText = "START!";
-        feedbackEl.style.color = "#00e676";
+        feedbackEl.style.color = "#4caf50";
         return;
     }
-
-    if (gameState !== 'PLAYING') return;
 
     const nextTile = tiles[currentTileIndex + 1];
     if (!nextTile) return;
 
-    const orbiter = pivotPlanet === 0 ? bluePos : redPos;
-    const distanceToNext = Math.hypot(orbiter.x - nextTile.x, orbiter.y - nextTile.y);
+    const activePlanet = (pivotPlanet === 0) ? bluePos : redPos;
+    const dist = Math.hypot(activePlanet.x - nextTile.x, activePlanet.y - nextTile.y);
 
-    // Strict distance-based timing thresholds
-    if (distanceToNext < 14) {
-        // Perfect hit
-        score += 100 + (combo * 15);
+    if (dist < 18) {
+        score += 100 + (combo * 10);
         combo++;
-        feedbackEl.innerText = "PERFECT!!";
+        feedbackEl.innerText = "PERFECT!";
         feedbackEl.style.color = "#00e676";
-        createExplosion(nextTile.x, nextTile.y, pivotPlanet === 0 ? "#33ccff" : "#ff3366");
         advanceTile(nextTile);
-    } else if (distanceToNext < 28) {
-        // Great hit
-        score += 60 + (combo * 5);
+    } else if (dist < 32) {
+        score += 50;
         combo++;
-        feedbackEl.innerText = "GREAT!";
-        feedbackEl.style.color = "#ffd700";
-        createExplosion(nextTile.x, nextTile.y, "#ffd700");
-        advanceTile(nextTile);
-    } else if (distanceToNext < 42) {
-        // Early / Late warning (Missed combo but survive)
-        combo = 0;
-        feedbackEl.innerText = "TOO EARLY / LATE";
-        feedbackEl.style.color = "#ff9900";
+        feedbackEl.innerText = "GREAT";
+        feedbackEl.style.color = "#ffeb3b";
         advanceTile(nextTile);
     } else {
-        // Complete Miss - Game Over
-        triggerMiss("MISS!");
+        combo = 0;
+        feedbackEl.innerText = "MISS!";
+        feedbackEl.style.color = "#ff5252";
     }
 
     scoreEl.innerText = score;
@@ -434,238 +215,121 @@ function handleInput() {
 }
 
 function advanceTile(nextTile) {
-    currentTileIndex++;
-
-    // Lock orbiter precisely to the target tile center
     if (pivotPlanet === 0) {
         bluePos = { x: nextTile.x, y: nextTile.y };
     } else {
         redPos = { x: nextTile.x, y: nextTile.y };
     }
 
-    // Switch pivot planet
-    pivotPlanet = pivotPlanet === 0 ? 1 : 0;
+    pivotPlanet = (pivotPlanet === 0) ? 1 : 0;
+    currentTileIndex++;
 
-    // Adjust angle for the new orbit around the new pivot
-    // Target direction vector angle from new pivot to upcoming tile
-    const upcomingTile = tiles[currentTileIndex + 1];
-    if (upcomingTile) {
-        const dx = upcomingTile.x - nextTile.x;
-        const dy = upcomingTile.y - nextTile.y;
-        const targetDirectionAngle = Math.atan2(dy, dx);
-
-        // Start orbit from the current pivot position relative angle
-        angle = targetDirectionAngle + Math.PI;
-    } else {
-        // Level Complete
-        gameState = 'CLEAR';
-        feedbackEl.innerText = "STAGE CLEAR!! 🎉";
-        feedbackEl.style.color = "#00e676";
-        restartBtn.style.display = "block";
-    }
+    // 다음 회전 축 기준 각도 정렬
+    const currentPivot = (pivotPlanet === 0) ? redPos : bluePos;
+    const otherPlanet = (pivotPlanet === 0) ? bluePos : redPos;
+    angle = Math.atan2(otherPlanet.y - currentPivot.y, otherPlanet.x - currentPivot.x);
 }
 
-function triggerMiss(reason) {
-    combo = 0;
-    comboEl.innerText = combo;
-    feedbackEl.innerText = reason;
-    feedbackEl.style.color = "#ff3366";
-    gameState = 'GAMEOVER';
-    
-    const orbiter = pivotPlanet === 0 ? bluePos : redPos;
-    createExplosion(orbiter.x, orbiter.y, "#ff3366");
-    restartBtn.style.display = "block";
-}
-
-function resetGame() {
-    initGame();
-}
-
+// -------------------------------------------------------------
+// 그래픽 렌더링
+// -------------------------------------------------------------
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Deep Dark Grid Background
     ctx.save();
-    ctx.fillStyle = "#0b0d14";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const currentTile = tiles[currentTileIndex] || tiles[0];
+    
+    // 카메라 스무스 추적
+    ctx.translate(canvas.width / 2 - currentTile.x, canvas.height / 2 - currentTile.y);
 
-    // Subtle background grid lines
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.03)";
-    ctx.lineWidth = 1;
-    const gridSize = 40;
-    const offsetX = (-cameraPos.x + canvas.width / 2) % gridSize;
-    const offsetY = (-cameraPos.y + canvas.height / 2) % gridSize;
-
-    for (let x = offsetX; x < canvas.width; x += gridSize) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, canvas.height);
-        ctx.stroke();
+    // 1. 타일 연결 선 그리기
+    ctx.beginPath();
+    for (let i = 0; i < tiles.length; i++) {
+        if (i === 0) ctx.moveTo(tiles[i].x, tiles[i].y);
+        else ctx.lineTo(tiles[i].x, tiles[i].y);
     }
-    for (let y = offsetY; y < canvas.height; y += gridSize) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(canvas.width, y);
-        ctx.stroke();
-    }
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
+    ctx.lineWidth = 6;
+    ctx.stroke();
 
-    // Camera transform centering on current progress
-    ctx.translate(canvas.width / 2 - cameraPos.x, canvas.height / 2 - cameraPos.y);
-
-    // 1. Draw Connecting Track Paths (Connected Rectangular Path)
-    for (let i = 0; i < tiles.length - 1; i++) {
-        const t1 = tiles[i];
-        const t2 = tiles[i + 1];
-
-        ctx.beginPath();
-        ctx.moveTo(t1.x, t1.y);
-        ctx.lineTo(t2.x, t2.y);
-        
-        if (i < currentTileIndex) {
-            ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
-            ctx.lineWidth = 14;
-        } else {
-            ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
-            ctx.lineWidth = 14;
-        }
-        ctx.stroke();
-    }
-
-    // 2. Draw Rectangular Connected Tiles
+    // 2. 직사각형 타일 그리기
     for (let i = 0; i < tiles.length; i++) {
         const t = tiles[i];
-        const isPassed = i < currentTileIndex;
-        const isCurrent = i === currentTileIndex;
-        const isNext = i === currentTileIndex + 1;
-
+        
         ctx.save();
         ctx.translate(t.x, t.y);
 
-        if (isCurrent) {
-            // Active current tile glow
-            ctx.shadowColor = "#ffffff";
-            ctx.shadowBlur = 12;
-            ctx.fillStyle = "#ffffff";
-        } else if (isNext) {
-            // Target tile golden neon glow
-            ctx.shadowColor = "#ffd700";
-            ctx.shadowBlur = 16;
+        ctx.beginPath();
+        ctx.roundRect(-TILE_W / 2, -TILE_H / 2, TILE_W, TILE_H, 6);
+
+        if (i < currentTileIndex) {
+            ctx.fillStyle = "rgba(255, 255, 255, 0.15)";
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.2)";
+        } else if (i === currentTileIndex + 1) {
             ctx.fillStyle = "#ffd700";
-        } else if (isPassed) {
-            ctx.fillStyle = "rgba(255, 255, 255, 0.25)";
+            ctx.strokeStyle = "#ffffff";
+            ctx.shadowColor = "#ffd700";
+            ctx.shadowBlur = 12;
+        } else if (i === currentTileIndex) {
+            ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
+            ctx.strokeStyle = "#ffffff";
         } else {
-            ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
+            ctx.fillStyle = "#1e293b";
+            ctx.strokeStyle = "#334155";
         }
 
-        // Draw square rounded tiles forming continuous paths
-        const half = TILE_SIZE / 2;
-        ctx.beginPath();
-        ctx.roundRect(-half, -half, TILE_SIZE, TILE_SIZE, 8);
-        ctx.fill();
-
-        // Inner tile accent border
-        ctx.strokeStyle = isNext ? "#ffffff" : "rgba(0, 0, 0, 0.4)";
         ctx.lineWidth = 2;
+        ctx.fill();
         ctx.stroke();
-
         ctx.restore();
     }
 
-    // 3. Draw Connecting Orbit Line between Red & Blue planets
+    // 3. 행성 연결 봉 (Link)
     ctx.beginPath();
     ctx.moveTo(redPos.x, redPos.y);
     ctx.lineTo(bluePos.x, bluePos.y);
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
-    ctx.lineWidth = 3;
-    ctx.setLineDash([4, 4]);
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.6)";
+    ctx.lineWidth = 4;
     ctx.stroke();
-    ctx.setLineDash([]);
 
-    // 4. Draw Particles
-    for (let p of particles) {
-        ctx.save();
-        ctx.globalAlpha = Math.max(0, p.life);
-        ctx.fillStyle = p.color;
-        ctx.shadowColor = p.color;
-        ctx.shadowBlur = 8;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-    }
-
-    // 5. Draw Fire Planet (Red / Orange)
-    ctx.save();
-    ctx.shadowColor = "#ff3366";
-    ctx.shadowBlur = pivotPlanet === 0 ? 20 : 10;
+    // 4. 불 행성 (Red)
+    ctx.beginPath();
+    ctx.arc(redPos.x, redPos.y, 13, 0, Math.PI * 2);
     ctx.fillStyle = "#ff3366";
-    ctx.beginPath();
-    ctx.arc(redPos.x, redPos.y, 15, 0, Math.PI * 2);
+    ctx.shadowColor = "#ff3366";
+    ctx.shadowBlur = 15;
     ctx.fill();
-    // Inner core
-    ctx.fillStyle = "#ffcc00";
-    ctx.beginPath();
-    ctx.arc(redPos.x, redPos.y, 6, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
 
-    // 6. Draw Ice Planet (Cyan / Blue)
-    ctx.save();
-    ctx.shadowColor = "#33ccff";
-    ctx.shadowBlur = pivotPlanet === 1 ? 20 : 10;
+    // 5. 얼음 행성 (Blue)
+    ctx.beginPath();
+    ctx.arc(bluePos.x, bluePos.y, 13, 0, Math.PI * 2);
     ctx.fillStyle = "#33ccff";
-    ctx.beginPath();
-    ctx.arc(bluePos.x, bluePos.y, 15, 0, Math.PI * 2);
+    ctx.shadowColor = "#33ccff";
+    ctx.shadowBlur = 15;
     ctx.fill();
-    // Inner core
-    ctx.fillStyle = "#ffffff";
-    ctx.beginPath();
-    ctx.arc(bluePos.x, bluePos.y, 6, 0, Math.PI * 2);
-    ctx.fill();
+
     ctx.restore();
-
-    ctx.restore(); // Restore camera matrix
 }
 
-function gameLoop() {
+function loop() {
     update();
-    updateParticles();
     draw();
-    requestAnimationFrame(gameLoop);
+    requestAnimationFrame(loop);
 }
 
-// Key & Event Listeners
+// 입력 이벤트 연동
 window.addEventListener('keydown', (e) => {
-    if (e.code === 'Space' || e.key === ' ') {
-        e.preventDefault();
+    if (e.code === 'Space' || e.key !== '') {
         handleInput();
     }
 });
 
-canvas.addEventListener('mousedown', (e) => {
-    e.preventDefault();
-    handleInput();
-});
+canvas.addEventListener('mousedown', handleInput);
 
-// Start game on window load
-initGame();
-gameLoop();
+loop();
 </script>
 </body>
 </html>
 """
 
-# Render embedded HTML component with exact dimensions
-components.html(game_html, height=540)
-
-st.markdown("""
----
-### 🛠️ 수정사항 안내:
-1. **간격 정확도 개선**: 행성 회전 반지름(`ORBIT_RADIUS = 60`)과 타일 간격(`TILE_SPACING = 60`)을 1:1로 일치시켜, 180도 회전 시 다음 타일 중심에 정확히 착지합니다.
-2. **직각 연결 타일 트랙**: 타일이 끊어지지 않는 90도 직속/꺾임 구조의 연속된 사각형 타일 트랙으로 생성됩니다.
-3. **네온 다크 테마**: 어두운 트론 스타일 배경(`0b0d14`) 및 불(Red/Orange), 얼음(Cyan/Blue), 황금색 목표 타일 Glow 효과가 적용되었습니다.
-""")
-```
-
-```text:Requirements specification:requirements.txt
-streamlit
+components.html(game_html, height=520)
