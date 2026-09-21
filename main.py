@@ -7,7 +7,6 @@ st.set_page_config(
     layout="centered"
 )
 
-# 스트림릿 어두운 테마 설정
 st.markdown("""
 <style>
     .stApp {
@@ -30,7 +29,6 @@ st.markdown("""
 st.title("🔥 A Dance of Fire and Ice ❄️")
 st.caption("박자에 맞춰 타일 위로 행성을 착지시키세요!")
 
-# 난이도(속도) 선택 UI
 col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
     speed_option = st.selectbox(
@@ -138,7 +136,6 @@ let currentTileIdx = 0;
 let pivotPos = {{ x: 0, y: 0 }};
 let activePos = {{ x: 0, y: 0 }};
 
-// 카메라 부드러운 추적
 let camX = 0;
 let camY = 0;
 const camLerpFactor = 0.08; 
@@ -147,24 +144,29 @@ let currentAngle = 0;
 let targetAngle = 0;
 let baseRotSpeed = {selected_speed};
 
-let activePlanetType = 1; // 0: Red, 1: Blue
+let activePlanetType = 1;
 let score = 0;
 let combo = 0;
 let maxCombo = 0;
 
 let gameState = "READY";
 
-// 랜덤 타일 경로 생성
+function normalizeAngle(angle) {{
+    while (angle < 0) angle += Math.PI * 2;
+    while (angle >= Math.PI * 2) angle -= Math.PI * 2;
+    return angle;
+}}
+
 function generateRandomMap() {{
     tiles = [];
     let cx = 150;
     let cy = 190;
     
     const possibleDirs = [
-        {{ x: 1, y: 0 }},  // 우
-        {{ x: 1, y: 0 }},  // 우 (직진 가중치)
-        {{ x: 0, y: 1 }},  // 하
-        {{ x: 0, y: -1 }}  // 상
+        {{ x: 1, y: 0 }},
+        {{ x: 1, y: 0 }},
+        {{ x: 0, y: 1 }},
+        {{ x: 0, y: -1 }}
     ];
 
     tiles.push({{ x: cx, y: cy }});
@@ -174,7 +176,7 @@ function generateRandomMap() {{
         let d;
         do {{
             d = possibleDirs[Math.floor(Math.random() * possibleDirs.length)];
-        }} while (d.x === -lastDir.x && d.y === -lastDir.y); // 역주행 방지
+        }} while (d.x === -lastDir.x && d.y === -lastDir.y);
 
         lastDir = d;
         cx += d.x * (2 * R);
@@ -197,9 +199,9 @@ function initGame() {{
     camY = pivotPos.y;
     
     const nextTile = tiles[1];
-    const targetDirAngle = Math.atan2(nextTile.y - pivotPos.y, nextTile.x - pivotPos.x);
+    let targetDirAngle = Math.atan2(nextTile.y - pivotPos.y, nextTile.x - pivotPos.x);
     
-    // 첫 시작 시 180도 뒤에서 출발하여 목표 각도까지 회전
+    targetDirAngle = normalizeAngle(targetDirAngle);
     currentAngle = targetDirAngle - Math.PI;
     targetAngle = targetDirAngle;
 
@@ -224,7 +226,6 @@ function update() {{
     currentAngle += baseRotSpeed;
     updateActivePos();
 
-    // 입력 타이밍을 놓쳐 목표 각도를 지나친 경우
     if (currentAngle > targetAngle + 0.6) {{
         triggerGameOver("시간 초과! (Miss)");
     }}
@@ -242,14 +243,14 @@ function handleInput() {{
 
     const diff = Math.abs(currentAngle - targetAngle);
 
-    if (diff < 0.32) {{
+    if (diff < 0.35) {{
         score += 100 + (combo * 10);
         combo++;
         if (combo > maxCombo) maxCombo = combo;
         feedbackEl.innerText = "PERFECT!";
         feedbackEl.style.color = "#00e676";
         advanceToNextTile();
-    }} else if (diff < 0.55) {{
+    }} else if (diff < 0.60) {{
         score += 50;
         combo++;
         if (combo > maxCombo) maxCombo = combo;
@@ -271,26 +272,27 @@ function triggerGameOver(reason) {{
     restartBtn.style.display = "inline-block";
 }}
 
-// 타일 이동 및 연속성 각도 보정 함수
 function advanceToNextTile() {{
     currentTileIdx++;
     const nextPivot = tiles[currentTileIdx];
     if (!nextPivot) return;
 
-    // 회전하던 행성이 새로운 Pivot 타일 위치로 스냅
     pivotPos = {{ x: nextPivot.x, y: nextPivot.y }};
     activePlanetType = activePlanetType === 0 ? 1 : 0;
 
     const futureTile = tiles[currentTileIdx + 1];
     if (futureTile) {{
-        // 다가올 타일의 목표 방향 각도 연산
         let nextTargetDirAngle = Math.atan2(futureTile.y - pivotPos.y, futureTile.x - pivotPos.x);
-        
-        // 회전 각도 부드러운 연결: 이전 타일에 도달한 현재 각도를 바탕으로 정렬
-        let angleOffset = currentAngle - targetAngle; // 입력 시점의 미세 오차
-        
-        // 다음 회전은 새로 바뀐 Pivot 기준의 반대편(PI 차감)부터 시작
-        currentAngle = nextTargetDirAngle - Math.PI + angleOffset;
+        let currentPlanetDirAngle = Math.atan2(activePos.y - pivotPos.y, activePos.x - pivotPos.x);
+
+        currentPlanetDirAngle = normalizeAngle(currentPlanetDirAngle);
+        nextTargetDirAngle = normalizeAngle(nextTargetDirAngle);
+
+        if (nextTargetDirAngle <= currentPlanetDirAngle) {{
+            nextTargetDirAngle += Math.PI * 2;
+        }}
+
+        currentAngle = currentPlanetDirAngle;
         targetAngle = nextTargetDirAngle;
     }}
     updateActivePos();
@@ -301,13 +303,11 @@ function draw() {{
 
     ctx.save();
     
-    // 카메라 위치 부드럽게 보간 (Lerp)
     camX += (pivotPos.x - camX) * camLerpFactor;
     camY += (pivotPos.y - camY) * camLerpFactor;
 
     ctx.translate(canvas.width / 2 - camX, canvas.height / 2 - camY);
 
-    // 1. 타일 연결 선
     ctx.beginPath();
     for (let i = 0; i < tiles.length; i++) {{
         if (i === 0) ctx.moveTo(tiles[i].x, tiles[i].y);
@@ -317,7 +317,6 @@ function draw() {{
     ctx.lineWidth = 6;
     ctx.stroke();
 
-    // 2. 직사각형 타일
     for (let i = 0; i < tiles.length; i++) {{
         const t = tiles[i];
         
@@ -352,7 +351,6 @@ function draw() {{
     const redPos = activePlanetType === 1 ? pivotPos : activePos;
     const bluePos = activePlanetType === 1 ? activePos : pivotPos;
 
-    // 3. 행성 간 연결선
     ctx.beginPath();
     ctx.moveTo(redPos.x, redPos.y);
     ctx.lineTo(bluePos.x, bluePos.y);
@@ -360,7 +358,6 @@ function draw() {{
     ctx.lineWidth = 4;
     ctx.stroke();
 
-    // 4. 불 행성
     ctx.beginPath();
     ctx.arc(redPos.x, redPos.y, 14, 0, Math.PI * 2);
     ctx.fillStyle = "#ff3366";
@@ -368,7 +365,6 @@ function draw() {{
     ctx.shadowBlur = 14;
     ctx.fill();
 
-    // 5. 얼음 행성
     ctx.beginPath();
     ctx.arc(bluePos.x, bluePos.y, 14, 0, Math.PI * 2);
     ctx.fillStyle = "#33ccff";
