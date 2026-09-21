@@ -30,7 +30,7 @@ st.markdown("""
 st.title("🔥 A Dance of Fire and Ice ❄️")
 st.caption("박자에 맞춰 타일 위로 행성을 착지시키세요!")
 
-# 난이도(속도) 선택UI
+# 난이도(속도) 선택 UI
 col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
     speed_option = st.selectbox(
@@ -39,7 +39,6 @@ with col2:
         index=1
     )
 
-# 선택한 난이도를 JS 회전 속도 값으로 변환
 speed_map = {
     "쉬움 (Slow)": 0.035,
     "보통 (Normal)": 0.05,
@@ -48,7 +47,6 @@ speed_map = {
 }
 selected_speed = speed_map[speed_option]
 
-# 게임 엔진 HTML/JS
 game_html = f"""
 <!DOCTYPE html>
 <html>
@@ -140,31 +138,33 @@ let currentTileIdx = 0;
 let pivotPos = {{ x: 0, y: 0 }};
 let activePos = {{ x: 0, y: 0 }};
 
+// 부드러운 카메라 추적 변수
+let camX = 0;
+let camY = 0;
+const camLerpFactor = 0.08; 
+
 let currentAngle = 0;
 let startAngle = 0;
 let targetAngle = Math.PI;
 let baseRotSpeed = {selected_speed};
 
-let activePlanetType = 1; // 0: Red, 1: Blue
+let activePlanetType = 1;
 let score = 0;
 let combo = 0;
 let maxCombo = 0;
 
-let gameState = "READY"; // READY, PLAYING, GAMEOVER
+let gameState = "READY";
 
-// -------------------------------------------------------------
-// 랜덤 타일 트랙 생성
-// -------------------------------------------------------------
 function generateRandomMap() {{
     tiles = [];
     let cx = 150;
     let cy = 190;
     
     const possibleDirs = [
-        {{ x: 1, y: 0 }},  // 우
-        {{ x: 1, y: 0 }},  // 우 (우직진 확률 높임)
-        {{ x: 0, y: 1 }},  // 하
-        {{ x: 0, y: -1 }}  // 상
+        {{ x: 1, y: 0 }},
+        {{ x: 1, y: 0 }},
+        {{ x: 0, y: 1 }},
+        {{ x: 0, y: -1 }}
     ];
 
     tiles.push({{ x: cx, y: cy }});
@@ -173,7 +173,6 @@ function generateRandomMap() {{
 
     for (let i = 0; i < 200; i++) {{
         let d;
-        // 이전 방향과 반대로 돌아가지 않도록 필터링
         do {{
             d = possibleDirs[Math.floor(Math.random() * possibleDirs.length)];
         }} while (d.x === -lastDir.x && d.y === -lastDir.y);
@@ -195,6 +194,8 @@ function initGame() {{
     gameState = "READY";
 
     pivotPos = {{ x: tiles[0].x, y: tiles[0].y }};
+    camX = pivotPos.x;
+    camY = pivotPos.y;
     
     const nextTile = tiles[1];
     const baseAngle = Math.atan2(nextTile.y - pivotPos.y, nextTile.x - pivotPos.x);
@@ -218,24 +219,17 @@ function updateActivePos() {{
     activePos.y = pivotPos.y + Math.sin(currentAngle) * (2 * R);
 }}
 
-// -------------------------------------------------------------
-// 프레임 업데이트
-// -------------------------------------------------------------
 function update() {{
     if (gameState !== "PLAYING") return;
 
     currentAngle += baseRotSpeed;
     updateActivePos();
 
-    // 360도 회전 초과 시 (한 바퀴 이상 돌 때까지 입력을 안 함) -> GAME OVER
     if (currentAngle > targetAngle + 0.6) {{
         triggerGameOver("시간 초과! (Miss)");
     }}
 }}
 
-// -------------------------------------------------------------
-// 판정 및 게임 오버 처리
-// -------------------------------------------------------------
 function handleInput() {{
     if (gameState === "READY") {{
         gameState = "PLAYING";
@@ -263,7 +257,6 @@ function handleInput() {{
         feedbackEl.style.color = "#ffeb3b";
         advanceToNextTile();
     }} else {{
-        // 박자를 놓침 -> MISS 및 게임 오버
         triggerGameOver("MISS!");
     }}
 
@@ -296,14 +289,16 @@ function advanceToNextTile() {{
     updateActivePos();
 }}
 
-// -------------------------------------------------------------
-// Canvas 렌더링
-// -------------------------------------------------------------
 function draw() {{
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     ctx.save();
-    ctx.translate(canvas.width / 2 - pivotPos.x, canvas.height / 2 - pivotPos.y);
+    
+    // 부드러운 카메라 이동 (Lerp 적용)
+    camX += (pivotPos.x - camX) * camLerpFactor;
+    camY += (pivotPos.y - camY) * camLerpFactor;
+
+    ctx.translate(canvas.width / 2 - camX, canvas.height / 2 - camY);
 
     // 1. 경로 선
     ctx.beginPath();
